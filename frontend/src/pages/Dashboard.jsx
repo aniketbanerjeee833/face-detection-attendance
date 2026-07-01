@@ -163,7 +163,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent logs */}
-      <motion.div
+      {/* <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.22 }}
@@ -196,7 +196,7 @@ export default function Dashboard() {
             </table>
           </div>
         )}
-      </motion.div>
+      </motion.div> */}
     </div>
   );
 }

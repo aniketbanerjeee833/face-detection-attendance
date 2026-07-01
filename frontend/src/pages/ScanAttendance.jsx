@@ -210,7 +210,7 @@ export default function ScanAttendance() {
   const { videoRef, cameraActive, error: camError, startCamera, stopCamera } = useCamera();
   const canvasRef  = useRef(null);
   const intervalRef = useRef(null);
-
+const scanningRef = useRef(false);
   const [scanning,   setScanning]   = useState(false);
   const [result,     setResult]     = useState(null);
   const [statusMsg,  setStatusMsg]  = useState('');
@@ -231,79 +231,174 @@ export default function ScanAttendance() {
     faceapi.draw.drawDetections(canvasRef.current, resized);
   }, []);
 
-  const startScanning = useCallback(() => {
-    if (!modelsLoaded || !cameraActive) return;
-    setScanning(true);
-    setStatusMsg('Looking for face...');
+  // const startScanning = useCallback(() => {
+  //   if (!modelsLoaded || !cameraActive) return;
+  //   setScanning(true);
+  //   setStatusMsg('Looking for face...');
 
-    intervalRef.current = setInterval(async () => {
-      if (!videoRef.current) return;
-      try {
-        const detection = await faceapi
-          .detectSingleFace(
-            videoRef.current,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 })
-          )
-          .withFaceLandmarks()
-          .withFaceDescriptor();
+  //   intervalRef.current = setInterval(async () => {
+  //     if (!videoRef.current) return;
+  //     try {
+  //       const detection = await faceapi
+  //         .detectSingleFace(
+  //           videoRef.current,
+  //           new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 })
+  //         )
+  //         .withFaceLandmarks()
+  //         .withFaceDescriptor();
 
-        if (!detection) {
-          setStatusMsg('No face detected — hold still');
-          return;
-        }
+  //       if (!detection) {
+  //         setStatusMsg('No face detected — hold still');
+  //         return;
+  //       }
 
-        drawDetections([detection]);
-        setStatusMsg('Face detected — matching...');
+  //       drawDetections([detection]);
+  //       setStatusMsg('Face detected — matching...');
 
-        const match = findBestMatch(detection.descriptor, employees);
-        clearInterval(intervalRef.current);
-        setScanning(false);
+  //       const match = findBestMatch(detection.descriptor, employees);
+  //       clearInterval(intervalRef.current);
+  //       setScanning(false);
 
-        if (!match) {
-          setResult({ type: 'fail' });
-          return;
-        }
+  //       if (!match) {
+  //         setResult({ type: 'fail' });
+  //         return;
+  //       }
 
-        try {
-          const data = await markAttendance({
-            employee_id: match.employee.id,
-            confidence:  match.confidence,
-          }).unwrap();
+  //       try {
+  //         const data = await markAttendance({
+  //           employee_id: match.employee.id,
+  //           confidence:  match.confidence,
+  //         }).unwrap();
 
-          setResult({
-            type:       'success',
-            employee:   match.employee,
-            confidence: match.confidence,
-            status:     data.status,
-          });
-        } catch (err) {
-          const msg = err?.data?.message || '';
-          if (msg.includes('already marked')) {
-            setResult({
-              type:         'success',
-              employee:     match.employee,
-              confidence:   match.confidence,
-              status:       'already_marked',
-              alreadyMarked: true,
-            });
-          } else {
-            setResult({ type: 'fail' });
-          }
-        }
-      } catch (err) {
-        console.error('Detection error:', err);
+  //         setResult({
+  //           type:       'success',
+  //           employee:   match.employee,
+  //           confidence: match.confidence,
+  //           status:     data.status,
+  //         });
+  //       } catch (err) {
+  //         const msg = err?.data?.message || '';
+  //         if (msg.includes('already marked')) {
+  //           setResult({
+  //             type:         'success',
+  //             employee:     match.employee,
+  //             confidence:   match.confidence,
+  //             status:       'already_marked',
+  //             alreadyMarked: true,
+  //           });
+  //         } else {
+  //           setResult({ type: 'fail' });
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error('Detection error:', err);
+  //     }
+  //   }, 800);
+  // }, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance]);
+const isProcessingRef = useRef(false);
+
+const startScanning = useCallback(() => {
+  if (!modelsLoaded || !cameraActive) return;
+   if (scanningRef.current) return;
+
+  scanningRef.current = true;
+  setScanning(true);
+  setStatusMsg('Looking for face...');
+  isProcessingRef.current = false;
+
+  intervalRef.current = setInterval(async () => {
+    if (!videoRef.current || isProcessingRef.current) return; // guard re-entry
+    isProcessingRef.current = true;
+
+    try {
+      const detection = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        setStatusMsg('No face detected — hold still');
+        isProcessingRef.current = false; // allow next tick
+        return;
       }
-    }, 800);
-  }, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance]);
 
-  const handleReset = () => {
-    setResult(null);
-    setStatusMsg('');
-    if (canvasRef.current) {
-      canvasRef.current.getContext('2d')
-        .clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      // Stop the loop immediately — nothing after this point can fire again
+      clearInterval(intervalRef.current);
+      drawDetections([detection]);
+      setStatusMsg('Face detected — matching...');
+      scanningRef.current = false;
+      setScanning(false);
+
+      const match = findBestMatch(detection.descriptor, employees);
+      if (!match) {
+        setResult({ type: 'fail' });
+        return;
+      }
+
+      try {
+        const data = await markAttendance({
+          employee_id: match.employee.id,
+          confidence: match.confidence,
+        }).unwrap();
+
+        setResult({ type: 'success', employee: match.employee, confidence: match.confidence, status: data.status });
+      } catch (err) {
+        const msg = err?.data?.message || '';
+        if (msg.includes('already marked')) {
+          setResult({ type: 'success', employee: match.employee, confidence: match.confidence, status: 'already_marked', alreadyMarked: true });
+        } else {
+          setResult({ type: 'fail' });
+        }
+      }
+    } catch (err) {
+      console.error('Detection error:', err);
+        clearInterval(intervalRef.current);
+  scanningRef.current = false;
+  setScanning(false);
+
+  isProcessingRef.current = false;
+      // scanningRef.current = false;
+      // isProcessingRef.current = false;
     }
-  };
+  }, 800);
+}, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance]);
+  // const handleReset = () => {
+  //   setResult(null);
+  //   setStatusMsg('');
+  //   if (canvasRef.current) {
+  //     canvasRef.current.getContext('2d')
+  //       .clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  //   }
+  // };
+  const handleStopCamera = () => {
+  clearInterval(intervalRef.current);
+  scanningRef.current = false;
+  isProcessingRef.current = false;
+  setScanning(false);
+  setStatusMsg('');
+  stopCamera();
+};
+  const handleReset = () => {
+  clearInterval(intervalRef.current);
+
+  scanningRef.current = false;
+  isProcessingRef.current = false;
+
+  setScanning(false);
+  setResult(null);
+  setStatusMsg("");
+
+  if (canvasRef.current) {
+    canvasRef.current
+      .getContext("2d")
+      .clearRect(
+        0,
+        0,
+        canvasRef.current.width,
+        canvasRef.current.height
+      );
+  }
+};
 
   useEffect(() => () => clearInterval(intervalRef.current), []);
 
@@ -314,29 +409,28 @@ export default function ScanAttendance() {
   return (
     <div>
       {!modelsLoaded && <Spinner size="lg" text="Loading face recognition models..." />}
+{modelsLoaded && (
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="space-y-3 relative">
+          <CameraFeed
+            videoRef={videoRef}
+            canvasRef={canvasRef}
+            cameraActive={cameraActive}
+            onStart={startCamera}
+          />
+          {camError && <div className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{camError}</div>}
+          {statusMsg && !result && (
+            <motion.div key={statusMsg} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="rounded-xl bg-blue-50 px-4 py-2.5 text-center text-sm font-medium text-blue-700">
+              {statusMsg}
+            </motion.div>
+          )}
 
-      {modelsLoaded && !result && (
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-3">
-            <CameraFeed
-              videoRef={videoRef}
-              canvasRef={canvasRef}
-              cameraActive={cameraActive}
-              onStart={startCamera}
-            />
-            {camError && (
-              <div className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{camError}</div>
-            )}
-            {statusMsg && (
-              <motion.div
-                key={statusMsg}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="rounded-xl bg-blue-50 px-4 py-2.5 text-center text-sm font-medium text-blue-700"
-              >
-                {statusMsg}
-              </motion.div>
-            )}
+          {result && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
+              <ResultOverlay result={result} onReset={handleReset} />
+            </div>
+          )}
           </div>
 
           <div className="space-y-4">
@@ -350,16 +444,9 @@ export default function ScanAttendance() {
               </ol>
             </div>
 
-            <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-100 text-sm">
-              <p className="flex justify-between py-1 text-slate-500">
-                Registered employees <strong className="text-slate-900">{employees.length}</strong>
-              </p>
-              <p className="flex justify-between py-1 text-slate-500">
-                Models <strong className="text-green-600">Ready ✓</strong>
-              </p>
-            </div>
+           
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               {cameraActive && !scanning && (
                 <Button size="lg" full onClick={startScanning}>📷 Scan Now</Button>
               )}
@@ -369,12 +456,25 @@ export default function ScanAttendance() {
               {cameraActive && (
                 <Button full variant="danger" onClick={stopCamera}>Stop Camera</Button>
               )}
-            </div>
+            </div> */}
+              {!result && (
+    <div className="space-y-2">
+      {cameraActive && !scanning && (
+        <Button size="lg" full onClick={startScanning}>📷 Scan Now</Button>
+      )}
+      {scanning && (
+        <Button size="lg" full variant="outline" disabled>🔄 Scanning...</Button>
+      )}
+      {cameraActive && (
+        <Button full variant="danger" onClick={handleStopCamera}>Stop Camera</Button>
+      )}
+    </div>
+  )}
           </div>
         </div>
       )}
-
-      {result && <ResultOverlay result={result} onReset={handleReset} />}
+{/* 
+      {result && <ResultOverlay result={result} onReset={handleReset} />} */}
     </div>
   );
 }

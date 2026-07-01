@@ -9,16 +9,29 @@ export const attendanceApi = createApi({
   tagTypes: ['Attendance', 'AttendanceSummary'],
   endpoints: (build) => ({
 
-    getAttendance: build.query({
-      query: ({ date, employee_id } = {}) => {
-        const params = new URLSearchParams();
-        if (date)        params.set('date', date);
-        if (employee_id) params.set('employee_id', employee_id);
-        return `/attendance?${params.toString()}`;
-      },
-      providesTags: ['Attendance'],
-    }),
+    // getAttendance: build.query({
+    //   query: ({ date, employee_id } = {}) => {
+    //     const params = new URLSearchParams();
+    //     if (date)        params.set('date', date);
+    //     if (employee_id) params.set('employee_id', employee_id);
+    //     return `/attendance?${params.toString()}`;
+    //   },
+    //   providesTags: ['Attendance'],
+    // }),
+getAttendance: build.query({
+  query: ({ date, page , limit  } = {}) => {
+    const params = new URLSearchParams();
 
+    if (date) params.set("date", date);
+    // if (employee_id) params.set("employee_id", employee_id);
+
+    params.set("page", page);
+    params.set("limit", limit);
+
+    return `/attendance?${params.toString()}`;
+  },
+  providesTags: ["Attendance"],
+}),
     getTodaySummary: build.query({
       query: () => '/attendance/summary/today',
       providesTags: ['AttendanceSummary'],

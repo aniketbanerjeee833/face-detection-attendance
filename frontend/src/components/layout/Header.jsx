@@ -35,7 +35,7 @@ export default function Header({ onMenuClick, title }) {
         transition={{ duration: 0.25 }}
       >
         <h1 className="text-lg font-bold text-indigo-900 lg:text-xl">{title}</h1>
-        <p className="text-xs text-indigo-500">{today}</p>
+        {/* <p className="text-xs text-indigo-500">{today}</p> */}
       </motion.div>
     </header>
   );

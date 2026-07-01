@@ -10,7 +10,7 @@ export const employeeApi = createApi({
   endpoints: (build) => ({
 
     getEmployees: build.query({
-      query: ({ page = 1, limit = 100 } = {}) =>
+      query: ({ page ,limit } = {}) =>
         `/employees?page=${page}&limit=${limit}`,
       providesTags: (result) =>
         result?.employees
