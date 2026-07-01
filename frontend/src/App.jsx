@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
-import { store } from './store';
+
 import ProtectedLayout from './components/layout/ProtectedLayout';
 import Login from './pages/Login';
 
@@ -12,7 +12,7 @@ import Dashboard from './pages/Dashboard';
 
 export default function App() {
   return (
-    <Provider store={store}>
+    
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -25,6 +25,6 @@ export default function App() {
           {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
         </Routes>
       </BrowserRouter>
-    </Provider>
+   
   );
 }

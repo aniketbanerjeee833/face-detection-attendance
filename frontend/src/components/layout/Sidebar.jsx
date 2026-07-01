@@ -73,7 +73,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
-import { logout } from '../../store/slices/authSlice';
+
 
 const navItems = [
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -88,7 +88,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const { admin } = useSelector((s) => s.auth);
 
   const handleLogout = () => {
-    dispatch(logout());
+    //dispatch(logout());
     navigate('/login');
   };
 

@@ -1,17 +1,20 @@
 import db from "../config/db.js";
+import asyncHandler from "../middleware/asyncHandler.js";
 
-const markAttendance = async (req, res) => {
+const markAttendance = asyncHandler(async (req, res) => {
   const { employee_id, confidence } = req.body;
   if (!employee_id) return res.status(400).json({ message: 'employee_id required' });
 
-  const now = new Date();
-  const date = now.toISOString().split('T')[0];
-  const time = now.toTimeString().split(' ')[0];
+  // const now = new Date();
+  // const date = now.toISOString().split('T')[0];
+  // const time = now.toTimeString().split(' ')[0];
 
-  // Late if after 9:30 AM
-  const hour = now.getHours();
-  const min = now.getMinutes();
-  const status = (hour > 9 || (hour === 9 && min > 30)) ? 'late' : 'present';
+  // // Late if after 9:30 AM
+  // const hour = now.getHours();
+  // const min = now.getMinutes();
+  // const status = (hour > 9 || (hour === 9 && min > 30)) ? 'late' : 'present';
+
+  const status = 'present';
 
   try {
     // Check if already marked today
@@ -49,9 +52,9 @@ const markAttendance = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
-};
+});
 
-const getAttendance = async (req, res) => {
+const getAttendance = asyncHandler(async (req, res) => {
   const { date, employee_id } = req.query;
   try {
     let query = `
@@ -73,9 +76,9 @@ const getAttendance = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
-};
+});
 
-const getTodaySummary = async (req, res) => {
+const getTodaySummary = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   try {
     const [[{ total }]] = await db.query('SELECT COUNT(*) as total FROM employees');
@@ -89,6 +92,6 @@ const getTodaySummary = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
-};
+});
 
 export { markAttendance, getAttendance, getTodaySummary };

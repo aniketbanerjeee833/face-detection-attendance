@@ -1,6 +1,7 @@
 // import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import db from '../config/db.js';
+import asyncHandler from '../middleware/asyncHandler.js';
 // const login = async (req, res) => {
 //     console.log(req.body);
 //   const { email, password } = req.body;
@@ -28,7 +29,7 @@ import db from '../config/db.js';
 //     res.status(500).json({ message: 'Server error', error: err.message });
 //   }
 // };
-const login = async (req, res) => {
+const login = asyncHandler(async (req, res) => {
   console.log(req.body);
 
   const { email, password } = req.body;
@@ -90,9 +91,9 @@ const login = async (req, res) => {
       error: err.message,
     });
   }
-};
-const getMe = async (req, res) => {
+});
+const getMe = asyncHandler(async (req, res) => {
   res.json({ admin: req.admin });
-};
+});
 
 export { login, getMe };
