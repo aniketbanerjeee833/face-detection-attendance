@@ -73,27 +73,83 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AnimatePresence, motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useLogoutMutation } from '@/redux/api/authApi';
+import {
+  LayoutDashboard,
+  Camera,
+  Users,
+  ClipboardList,
+  LogOut,
+} from "lucide-react";
 
-
+// const navItems = [
+//   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
+//   { to: '/scan', icon: '📷', label: 'Scan Attendance' },
+//   { to: '/employees', icon: '👥', label: 'Employees' },
+//   { to: '/logs', icon: '📋', label: 'Attendance Log' },
+// ];
 const navItems = [
-  { to: '/dashboard', icon: '📊', label: 'Dashboard' },
-  { to: '/scan', icon: '📷', label: 'Scan Attendance' },
-  { to: '/employees', icon: '👥', label: 'Employees' },
-  { to: '/logs', icon: '📋', label: 'Attendance Log' },
+  {
+    to: "/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+  },
+  {
+    to: "/employees",
+    icon: Users,
+    label: "Employees",
+  },
+  {
+    to: "/scan",
+    icon: Camera,
+    label: "Scan Attendance",
+  },
+  
+  {
+    to: "/logs",
+    icon: ClipboardList,
+    label: "Attendance Log",
+  },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { admin } = useSelector((s) => s.auth);
+  const [logoutUser, { isLoading: isLogoutLoading }] = useLogoutMutation();
 
-  const handleLogout = () => {
-    //dispatch(logout());
-    navigate('/login');
-  };
+  // const handleLogout = () => {
+  //   //dispatch(logout());
+  //   navigate('/login');
+  // };
+  const handleLogout = async () => {
+
+
+    try {
+      const response = await logoutUser().unwrap();
+      console.log("Logout Response:", response);
+      if (response?.success) {
+        console.log(response?.message);
+        // ✅ Clear Redux user slice completely
+        // dispatch(setLoggedIn(false));
+        // dispatch(setUserId(null));
+        //  dispatch(setUser(null));
+        //  dispatch(setUserRole(null));
+        toast.success(response?.message || 'Logout successful');
+        window.location.href = "/login"; // hard redirect clears memory
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      toast.error(err?.data?.message || 'Logout failed');
+    }
+    // console.error('Server responded with:', error.response.data);
+    //     }
+  }
 
   const content = (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* // <div className="flex h-full flex-col"> */}
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-6 py-6">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white shadow-soft">
@@ -116,42 +172,115 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 px-3">
+      <nav
+        className="flex-1 space-y-1 px-3
+    overflow-y-auto
+    scrollbar-thin
+    scrollbar-thumb-slate-300
+    scrollbar-track-transparent"
+      >
+        {/* <nav className="flex-1 space-y-1 px-3"> */}
         {navItems.map((item) => (
+          // <NavLink
+          //   key={item.to}
+          //   to={item.to}
+          //   onClick={onClose}
+          //   className={({ isActive }) =>
+          //     `relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
+          //       isActive ? 'text-indigo-700' : 'text-slate-500 hover:bg-indigo-50 hover:text-slate-700'
+          //     }`
+          //   }
+          // >
+          //   {({ isActive }) => (
+          //     <>
+          //       {isActive && (
+          //         <motion.span
+          //           layoutId="sidebar-active"
+          //           className="absolute inset-0 rounded-xl bg-indigo-50"
+          //           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+          //         />
+          //       )}
+          //       <span className="relative z-10">{item.icon}</span>
+          //       <span className="relative z-10">{item.label}</span>
+          //     </>
+          //   )}
+          // </NavLink>
+          //const Icon = item.icon;
           <NavLink
             key={item.to}
             to={item.to}
             onClick={onClose}
             className={({ isActive }) =>
-              `relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
-                isActive ? 'text-indigo-700' : 'text-slate-500 hover:bg-indigo-50 hover:text-slate-700'
+              `relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${isActive
+                ? "text-indigo-700"
+                : "text-slate-500 hover:bg-indigo-50 hover:text-slate-700"
               }`
             }
           >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.span
-                    layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-xl bg-indigo-50"
-                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            {({ isActive }) => {
+              const Icon = item.icon;
+
+              return (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="sidebar-active"
+                      className="absolute inset-0 rounded-xl bg-indigo-50"
+                      transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 32,
+                      }}
+                    />
+                  )}
+
+                  <Icon
+                    size={18}
+                    className={`relative z-10 ${isActive ? "text-indigo-700" : "text-slate-500"
+                      }`}
                   />
-                )}
-                <span className="relative z-10">{item.icon}</span>
-                <span className="relative z-10">{item.label}</span>
-              </>
-            )}
+
+                  <span className="relative z-10">
+                    {item.label}
+                  </span>
+                </>
+              );
+            }}
           </NavLink>
         ))}
       </nav>
 
       {/* Logout */}
       <div className="px-3 pb-5">
-        <button
+        {/* <button
           onClick={handleLogout}
+           disabled={isLogoutLoading}
           className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
         >
-          🚪 Logout
+         {isLogoutLoading ? (
+            <span className="relative z-10">Logging out...</span>
+          ) : (
+            <>
+              
+              <span className="relative z-10">Logout</span>
+              </>)}
+        </button> */}
+        <button
+          onClick={handleLogout}
+          disabled={isLogoutLoading}
+          className="flex w-full 
+          items-center gap-3 rounded-xl px-3.5 py-2.5 
+          text-sm font-medium text-slate-500 cursor-pointer
+          transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+        >
+          {isLogoutLoading ? (
+            "Logging out..."
+          ) : (
+            <>
+              <LogOut size={18} />
+              <span>Logout</span>
+            </>
+          )}
         </button>
       </div>
     </div>

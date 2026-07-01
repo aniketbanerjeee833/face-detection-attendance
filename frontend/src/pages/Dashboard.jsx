@@ -124,24 +124,24 @@ const STAT_STYLES = {
 export default function Dashboard() {
   // RTK Query — automatic caching, no useEffect/useState needed
   const { data: summaryData, isLoading: summaryLoading } = useGetTodaySummaryQuery();
-  const { data: logsData,    isLoading: logsLoading    } = useGetAttendanceQuery({});
+  //const { data: logsData,    isLoading: logsLoading    } = useGetAttendanceQuery({});
 
-  if (summaryLoading || logsLoading) return <Spinner size="lg" text="Loading dashboard..." />;
-
+  //if (summaryLoading || logsLoading) return <Spinner size="lg" text="Loading dashboard..." />;
+ if (summaryLoading) return <Spinner size="lg" text="Loading dashboard..." />;
   const summary    = summaryData;
-  const recentLogs = logsData?.attendance?.slice(0, 5) ?? [];
+  //const recentLogs = logsData?.attendance?.slice(0, 5) ?? [];
 
   const stats = [
     { label: 'Total Employees', value: summary?.total,   icon: '👥', cls: 'blue'   },
     { label: 'Present Today',   value: summary?.present, icon: '✅', cls: 'green'  },
     { label: 'Late Today',      value: summary?.late,    icon: '🕐', cls: 'yellow' },
-    { label: 'Absent Today',    value: summary?.absent,  icon: '❌', cls: 'red'    },
+    // { label: 'Absent Today',    value: summary?.absent,  icon: '❌', cls: 'red'    },
   ];
 
   return (
     <div className="space-y-6">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {stats.map((s, i) => {
           const style = STAT_STYLES[s.cls];
           return (

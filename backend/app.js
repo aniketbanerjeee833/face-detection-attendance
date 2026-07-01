@@ -8,9 +8,9 @@ import employeeRoutes from './src/routes/employeeRoutes.js';
 import attendanceRoutes from './src/routes/attendanceRoutes.js';
 import { fileURLToPath } from 'url';
 import { errorHandler, notFound } from './src/middleware/errorHandler.js';
-
+import cookieParser from "cookie-parser";
 const app = express();
-
+app.use(cookieParser());
 const allowedOrigins = [
   process.env.CLIENT_URL,               // e.g. http://localhost:5173
   "http://localhost:5173",              // second allowed origin

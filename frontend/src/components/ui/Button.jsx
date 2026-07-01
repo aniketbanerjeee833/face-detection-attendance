@@ -2,13 +2,16 @@ import { motion } from 'framer-motion';
 
 const variants = {
   primary:
-    'bg-indigo-600 text-white shadow-soft hover:bg-indigo-700 focus-visible:ring-indigo-300',
+    'bg-indigo-600 text-white shadow-soft hover:bg-indigo-700 focus-visible:ring-indigo-300 cursor-pointer',
   outline:
-    'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 focus-visible:ring-slate-200',
+    'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 focus-visible:ring-slate-200 cursor-pointer',
   danger:
-    'bg-red-500 text-white shadow-soft hover:bg-red-600 focus-visible:ring-red-50',
+    'bg-red-500 text-white shadow-soft hover:bg-red-600 focus-visible:ring-red-50 cursor-pointer',
   ghost:
-    'bg-transparent text-slate-500 hover:bg-slate-100 focus-visible:ring-slate-200',
+    'bg-transparent text-slate-500 hover:bg-slate-100 focus-visible:ring-slate-200 cursor-pointer',
+
+  checkOut:
+    'bg-green-500 text-white shadow-soft hover:bg-green-600 focus-visible:ring-green-50 cursor-pointer',
 };
 
 const sizes = {
