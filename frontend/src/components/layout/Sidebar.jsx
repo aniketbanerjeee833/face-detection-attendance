@@ -152,11 +152,12 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* // <div className="flex h-full flex-col"> */}
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-6 py-6">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-600 text-white shadow-soft">
+        {/* <span className="grid h-4 w-9 place-items-center rounded-xl
+         bg-indigo-600 text-white shadow-soft">
           👁
-        </span>
-        <span className="font-display text-lg font-extrabold tracking-tight text-slate-900">
-          FaceAttend
+        </span> */}
+        <span className="font-display text-md font-extrabold  whitespace-nowrap tracking-tight text-slate-900">
+          ATTENDANCE REGISTER
         </span>
       </div>
 
@@ -167,7 +168,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-slate-900">{admin?.name || 'Admin'}</div>
-          <div className="text-xs text-slate-400">Administrator</div>
+          {/* <div className="text-xs text-slate-400">Administrator</div> */}
         </div>
       </div>
 

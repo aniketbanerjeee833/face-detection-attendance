@@ -10,16 +10,33 @@ export const employeeApi = createApi({
   endpoints: (build) => ({
 
     getEmployees: build.query({
-      query: ({ page ,limit } = {}) =>
-        `/employees?page=${page}&limit=${limit}`,
-      providesTags: (result) =>
-        result?.employees
-          ? [
-              ...result.employees.map(({ id }) => ({ type: 'Employee', id })),
-              { type: 'Employee', id: 'LIST' },
-            ]
-          : [{ type: 'Employee', id: 'LIST' }],
-    }),
+  query: ({ page = 1, limit = 10, search = '' } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+    if (search) params.set('search', search);
+    return `/employees?${params.toString()}`;
+  },
+  providesTags: (result) =>
+    result?.employees
+      ? [
+          ...result.employees.map(({ id }) => ({ type: 'Employee', id })),
+          { type: 'Employee', id: 'LIST' },
+        ]
+      : [{ type: 'Employee', id: 'LIST' }],
+}),
+    // getEmployees: build.query({
+    //   query: ({ page ,limit,search } = {}) =>
+    //     `/employees?page=${page}&limit=${limit}&search=${search}`,
+    //   providesTags: (result) =>
+    //     result?.employees
+    //       ? [
+    //           ...result.employees.map(({ id }) => ({ type: 'Employee', id })),
+    //           { type: 'Employee', id: 'LIST' },
+    //         ]
+    //       : [{ type: 'Employee', id: 'LIST' }],
+    // }),
 
     getEmployee: build.query({
       query: (id) => `/employees/${id}`,
@@ -45,6 +62,17 @@ export const employeeApi = createApi({
       invalidatesTags: (_result, _err, { id }) => [{ type: 'Employee', id }],
     }),
 
+ updateEmployee: build.mutation({
+  query: ({ id, formData }) => ({
+    url: `/employees/${id}`,
+    method: 'PUT',
+    body: formData,
+  }),
+  invalidatesTags: (_result, _error, { id }) => [
+    { type: "Employee", id },
+    { type: "Employee", id: "LIST" },
+  ],
+}),
     deleteEmployee: build.mutation({
       query: (id) => ({ url: `/employees/${id}`, method: 'DELETE' }),
       invalidatesTags: (_result, _err, id) => [
@@ -62,4 +90,5 @@ export const {
   useCreateEmployeeMutation,
   useSaveDescriptorMutation,
   useDeleteEmployeeMutation,
+  useUpdateEmployeeMutation,
 } = employeeApi;

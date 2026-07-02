@@ -141,7 +141,9 @@ const handleSubmit = async (e) => {
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-600 text-2xl text-white shadow-soft">
             👁
           </span>
-          <h1 className="mt-4 font-display text-2xl font-extrabold text-slate-900">FaceAttend</h1>
+          <h1 className="mt-4 font-display text-2xl font-extrabold text-slate-900">
+            ATTENDANCE REGISTER
+          </h1>
           <p className="text-sm text-slate-400">Admin Portal</p>
         </div>
 

@@ -197,7 +197,7 @@ import * as faceapi from 'face-api.js';
 import { motion } from 'framer-motion';
 import { useFaceModels } from '../hooks/useFaceModels';
 import { useCamera } from '../hooks/useCamera';
-import { findBestMatch } from '../utils/faceUtils';
+import { findBestMatch, findClosestForDebug } from '../utils/faceUtils';
 import CameraFeed from '../components/face/CameraFeed';
 import ResultOverlay from '../components/face/ResultOverlay';
 import Spinner from '../components/ui/Spinner';
@@ -577,7 +577,7 @@ export default function ScanAttendance() {
   const [scanning,  setScanning]  = useState(false);
   const [result,    setResult]    = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
-
+const [debugInfo, setDebugInfo] = useState(null);
   const { data: empData } = useGetEmployeesQuery({ page: 1, limit: 100 });
   const employees = (empData?.employees ?? []).filter((e) => e.face_descriptor);
 
@@ -609,7 +609,8 @@ export default function ScanAttendance() {
 
       try {
         const detection = await faceapi
-          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.1 }))
+          .detectSingleFace(videoRef.current, new faceapi.
+            TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.1 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
 
@@ -625,11 +626,31 @@ export default function ScanAttendance() {
         scanningRef.current = false;
         setScanning(false);
 
-        const match = findBestMatch(detection.descriptor, employees);
-        if (!match) {
-          setResult({ type: 'fail', message: 'Face not recognized' });
-          return;
-        }
+//         const match = findBestMatch(detection.descriptor, employees);
+//         setDebugInfo({
+//   closest: match.closestEmployee?.name || 'none',
+//   distance: match.distance === Infinity ? 'N/A' : match.distance.toFixed(3),
+//   isMatch: match.isMatch,
+// });
+//         if (!match) {
+//           setResult({ type: 'fail', message: 'Face not recognized' });
+//           return;
+//         }
+const match = findBestMatch(detection.descriptor, employees);
+const debug = findClosestForDebug(detection.descriptor, employees);
+
+setDebugInfo({
+  closest: debug.closestEmployee?.name || 'none',
+  distance: debug.distance === Infinity ? 'N/A' : debug.distance.toFixed(3),
+  isMatch: !!match,
+});
+
+if (!match) {
+  setResult({ type: 'fail', message: 'Face not recognized' });
+  return;
+}
+
+        
 
         // ── Checkout-mode guard: make sure the right person is in front of the camera ──
         if (checkoutMode && expectedEmpId && match.employee.id !== expectedEmpId) {
@@ -721,7 +742,15 @@ export default function ScanAttendance() {
   }
 
   return (
+    <>
+
     <div>
+        {debugInfo && (
+        <div className="fixed bottom-2 left-2 right-2 z-50 rounded-lg bg-black/80 p-2 text-center text-xs text-white">
+          Closest: {debugInfo.closest} · 
+          Distance: {debugInfo.distance} · {debugInfo.isMatch ? '✅ Match' : '❌ No match'}
+        </div>
+      )}
       {checkoutMode && (
         <div className="mb-4 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700">
           Checking out: <strong>{expectedEmpName}</strong>
@@ -783,5 +812,6 @@ export default function ScanAttendance() {
         </div>
       )}
     </div>
+    </>
   );
 }
