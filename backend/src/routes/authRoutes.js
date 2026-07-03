@@ -8,6 +8,6 @@ import adminAuth from '../middleware/adminAuth.js';
 
 router.post('/login', login);
 router.get('/me', getMe);
-router.post("/logout",userAuth,adminAuth,logout);
+router.post("/logout",userAuth,logout);
 
 export default router;

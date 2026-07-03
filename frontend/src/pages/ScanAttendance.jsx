@@ -436,7 +436,7 @@ import { useMarkAttendanceMutation } from '../redux/api/attendanceApi';
 // //     }
 // //   }, 800);
 // // }, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance]);
-  
+
 
 // // const handleReset = () => {
 //   //   setResult(null);
@@ -520,7 +520,7 @@ import { useMarkAttendanceMutation } from '../redux/api/attendanceApi';
 //               </ol>
 //             </div>
 
-           
+
 
 //             {/* <div className="space-y-2">
 //               {cameraActive && !scanning && (
@@ -561,23 +561,25 @@ export default function ScanAttendance() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const checkoutMode     = location.state?.checkoutMode ?? false;
-  const expectedEmpId    = location.state?.employeeId ?? null;
-  const expectedEmpName  = location.state?.employeeName ?? null;
-  const returnTo         = location.state?.returnTo ?? null;
+  const checkoutMode = location.state?.checkoutMode ?? false;
+  const expectedEmpId = location.state?.employeeId ?? null;
+  const expectedEmpName = location.state?.employeeName ?? null;
+  const returnTo = location.state?.returnTo ?? null;
 
   const { modelsLoaded, error: modelError } = useFaceModels();
-  const { videoRef, cameraActive, error: camError, startCamera, stopCamera } = useCamera();
+  const { videoRef, cameraActive, error: camError, facingMode, startCamera, stopCamera,
+    switchCamera } = useCamera('environment');
+  // const { videoRef, cameraActive, error: camError, startCamera, stopCamera } = useCamera();
   const canvasRef = useRef(null);
   const intervalRef = useRef(null);
   const scanningRef = useRef(false);
   const isProcessingRef = useRef(false);
   const autoStartedRef = useRef(false); // prevents double auto-start in StrictMode/re-renders
 
-  const [scanning,  setScanning]  = useState(false);
-  const [result,    setResult]    = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
-const [debugInfo, setDebugInfo] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
   const { data: empData } = useGetEmployeesQuery({ page: 1, limit: 100 });
   const employees = (empData?.employees ?? []).filter((e) => e.face_descriptor);
 
@@ -585,9 +587,9 @@ const [debugInfo, setDebugInfo] = useState(null);
 
   const drawDetections = useCallback((detections) => {
     if (!canvasRef.current || !videoRef.current) return;
-    const dims    = faceapi.matchDimensions(canvasRef.current, videoRef.current, true);
+    const dims = faceapi.matchDimensions(canvasRef.current, videoRef.current, true);
     const resized = faceapi.resizeResults(detections, dims);
-    const ctx     = canvasRef.current.getContext('2d');
+    const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     faceapi.draw.drawDetections(canvasRef.current, resized);
   }, []);
@@ -626,31 +628,31 @@ const [debugInfo, setDebugInfo] = useState(null);
         scanningRef.current = false;
         setScanning(false);
 
-//         const match = findBestMatch(detection.descriptor, employees);
-//         setDebugInfo({
-//   closest: match.closestEmployee?.name || 'none',
-//   distance: match.distance === Infinity ? 'N/A' : match.distance.toFixed(3),
-//   isMatch: match.isMatch,
-// });
-//         if (!match) {
-//           setResult({ type: 'fail', message: 'Face not recognized' });
-//           return;
-//         }
-const match = findBestMatch(detection.descriptor, employees);
-const debug = findClosestForDebug(detection.descriptor, employees);
+        //         const match = findBestMatch(detection.descriptor, employees);
+        //         setDebugInfo({
+        //   closest: match.closestEmployee?.name || 'none',
+        //   distance: match.distance === Infinity ? 'N/A' : match.distance.toFixed(3),
+        //   isMatch: match.isMatch,
+        // });
+        //         if (!match) {
+        //           setResult({ type: 'fail', message: 'Face not recognized' });
+        //           return;
+        //         }
+        const match = findBestMatch(detection.descriptor, employees);
+        const debug = findClosestForDebug(detection.descriptor, employees);
 
-setDebugInfo({
-  closest: debug.closestEmployee?.name || 'none',
-  distance: debug.distance === Infinity ? 'N/A' : debug.distance.toFixed(3),
-  isMatch: !!match,
-});
+        setDebugInfo({
+          closest: debug.closestEmployee?.name || 'none',
+          distance: debug.distance === Infinity ? 'N/A' : debug.distance.toFixed(3),
+          isMatch: !!match,
+        });
 
-if (!match) {
-  setResult({ type: 'fail', message: 'Face not recognized' });
-  return;
-}
+        if (!match) {
+          setResult({ type: 'fail', message: 'Face not recognized' });
+          return;
+        }
 
-        
+
 
         // ── Checkout-mode guard: make sure the right person is in front of the camera ──
         if (checkoutMode && expectedEmpId && match.employee.id !== expectedEmpId) {
@@ -664,13 +666,13 @@ if (!match) {
         try {
           const data = await markAttendance({
             employee_id: match.employee.id,
-            confidence:  match.confidence,
+            confidence: match.confidence,
           }).unwrap();
 
           setResult({
-            type:       'success',
-            scanType:   data.type, // 'in' or 'out'
-            employee:   match.employee,
+            type: 'success',
+            scanType: data.type, // 'in' or 'out'
+            employee: match.employee,
             confidence: match.confidence,
             returnTo,
           });
@@ -678,9 +680,9 @@ if (!match) {
           const payload = err?.data;
           if (payload?.type === 'done') {
             setResult({
-              type:       'success',
-              scanType:   'done',
-              employee:   match.employee,
+              type: 'success',
+              scanType: 'done',
+              employee: match.employee,
               confidence: match.confidence,
               returnTo,
             });
@@ -744,57 +746,84 @@ if (!match) {
   return (
     <>
 
-    <div>
+      <div>
         {debugInfo && (
-        <div className="fixed bottom-2 left-2 right-2 z-50 rounded-lg bg-black/80 p-2 text-center text-xs text-white">
-          Closest: {debugInfo.closest} · 
-          Distance: {debugInfo.distance} · {debugInfo.isMatch ? '✅ Match' : '❌ No match'}
-        </div>
-      )}
-      {checkoutMode && (
-        <div className="mb-4 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700">
-          Checking out: <strong>{expectedEmpName}</strong>
-        </div>
-      )}
-
-      {!modelsLoaded && <Spinner size="lg" text="Loading face recognition models..." />}
-
-      {modelsLoaded && (
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-3 relative">
-            <CameraFeed
-              videoRef={videoRef}
-              canvasRef={canvasRef}
-              cameraActive={cameraActive}
-              onStart={startCamera}
-            />
-            {camError && <div className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{camError}</div>}
-            {statusMsg && !result && (
-              <motion.div key={statusMsg} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="rounded-xl bg-blue-50 px-4 py-2.5 text-center text-sm font-medium text-blue-700">
-                {statusMsg}
-              </motion.div>
-            )}
-            {result && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
-                <ResultOverlay result={result} onReset={handleReset} />
-              </div>
-            )}
+          <div className="fixed bottom-2 left-2 right-2 z-50 rounded-lg bg-black/80 p-2 text-center text-xs text-white">
+            Closest: {debugInfo.closest} ·
+            Distance: {debugInfo.distance} · {debugInfo.isMatch ? '✅ Match' : '❌ No match'}
           </div>
+        )}
+        {checkoutMode && (
+          <div className="mb-4 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700">
+            Checking out: <strong>{expectedEmpName}</strong>
+          </div>
+        )}
 
-          {!checkoutMode && (
-            <div className="space-y-4">
-              <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-100">
-                <h3 className="mb-3 text-sm font-semibold text-slate-900">How to scan</h3>
-                <ol className="space-y-2 text-sm text-slate-500">
-                  <li><strong className="text-slate-900">1.</strong> Click <strong className="text-slate-900">Open Camera</strong></li>
-                  <li><strong className="text-slate-900">2.</strong> Position face in front of camera</li>
-                  <li><strong className="text-slate-900">3.</strong> Click <strong className="text-slate-900">Scan Now</strong></li>
-                  <li><strong className="text-slate-900">4.</strong> Hold still for 2–3 seconds</li>
-                </ol>
-              </div>
+        {!modelsLoaded && <Spinner size="lg" text="Loading face recognition models..." />}
 
-              {!result && (
+        {modelsLoaded && (
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div className="space-y-3 relative">
+              <CameraFeed
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                cameraActive={cameraActive}
+                  facingMode={facingMode}
+                onStart={() => startCamera()}
+              />
+              {/* <CameraFeed
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                cameraActive={cameraActive}
+                onStart={startCamera}
+              /> */}
+              {/* {cameraActive && !result && (
+                <button
+                  type="button"
+                  onClick={switchCamera}
+                  className="absolute top-3 right-3 z-10 rounded-full bg-black/60 p-2.5 text-white hover:bg-black/80"
+                  title="Switch camera"
+                >
+                  🔄
+                </button>
+              )} */}
+              {cameraActive && !result && checkoutMode && (
+                <button
+                  type="button"
+                  onClick={switchCamera}
+                  className="absolute top-3 right-3 z-10 rounded-full bg-black/60 p-2.5 text-white hover:bg-black/80"
+                  title="Switch camera"
+                >
+                  🔄
+                </button>
+              )}
+              {camError && <div className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{camError}</div>}
+              {statusMsg && !result && (
+                <motion.div key={statusMsg} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="rounded-xl bg-blue-50 px-4 py-2.5 text-center text-sm font-medium text-blue-700">
+                  {statusMsg}
+                </motion.div>
+              )}
+              {result && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-2xl">
+                  <ResultOverlay result={result} onReset={handleReset} />
+                </div>
+              )}
+            </div>
+
+            {!checkoutMode && (
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-100">
+                  <h3 className="mb-3 text-sm font-semibold text-slate-900">How to scan</h3>
+                  <ol className="space-y-2 text-sm text-slate-500">
+                    <li><strong className="text-slate-900">1.</strong> Click <strong className="text-slate-900">Open Camera</strong></li>
+                    <li><strong className="text-slate-900">2.</strong> Position face in front of camera</li>
+                    <li><strong className="text-slate-900">3.</strong> Click <strong className="text-slate-900">Scan Now</strong></li>
+                    <li><strong className="text-slate-900">4.</strong> Hold still for 2–3 seconds</li>
+                  </ol>
+                </div>
+
+                {/* {!result && (
                 <div className="space-y-2">
                   {cameraActive && !scanning && (
                     <Button size="lg" full onClick={startScanning}>📷 Scan Now</Button>
@@ -806,12 +835,30 @@ if (!match) {
                     <Button full variant="danger" onClick={handleStopCamera}>Stop Camera</Button>
                   )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+              )} */}
+                {!checkoutMode && (
+                  <div className="space-y-2">
+                    {cameraActive && !scanning && (
+                      <Button size="lg" full onClick={startScanning}>📷 Scan Now</Button>
+                    )}
+                    {scanning && (
+                      <Button size="lg" full variant="outline" disabled>🔄 Scanning...</Button>
+                    )}
+                    {cameraActive && (
+                      <Button full variant="outline" onClick={switchCamera}>
+                        🔄 Switch to {facingMode === 'environment' ? 'Front' : 'Back'} Camera
+                      </Button>
+                    )}
+                    {cameraActive && (
+                      <Button full variant="danger" onClick={handleStopCamera}>Stop Camera</Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </>
   );
 }

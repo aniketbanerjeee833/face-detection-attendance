@@ -37,10 +37,11 @@ getAttendance: build.query({
 //   },
 //   providesTags: ["Attendance"],
 // }),
-    getTodaySummary: build.query({
-      query: () => '/attendance/summary/today',
-      providesTags: ['AttendanceSummary'],
-    }),
+
+    // getTodaySummary: build.query({
+    //   query: () => '/attendance/summary/today',
+    //   providesTags: ['AttendanceSummary'],
+    // }),
 
     markAttendance: build.mutation({
       query: (body) => ({

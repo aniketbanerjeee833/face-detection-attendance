@@ -14,6 +14,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   process.env.CLIENT_URL,               // e.g. http://localhost:5173
   "http://localhost:5173",              // second allowed origin
+  "http://localhost:5174", 
 
 ];
 

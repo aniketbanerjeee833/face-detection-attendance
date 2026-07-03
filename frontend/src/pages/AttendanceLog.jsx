@@ -322,7 +322,8 @@ export default function AttendanceLog() {
                     <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
                     <td className="px-6 py-3 text-slate-500">{log.in_time}</td>
                     <td className="px-6 py-3 text-slate-500">
-                      {log.out_time ?? <span className="text-amber-500 text-xs font-medium">Not checked out</span>}
+                      {log.out_time ?? <span className="text-amber-500 text-xs font-medium">
+                        On Duty</span>}
                     </td>
                     <td className="px-6 py-3">
                       <Badge status={log.status==="checked-out" ? "Duty Over" : "Duty In"} />

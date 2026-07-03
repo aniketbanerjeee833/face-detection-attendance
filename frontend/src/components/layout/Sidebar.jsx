@@ -82,6 +82,7 @@ import {
   ClipboardList,
   LogOut,
 } from "lucide-react";
+import { clearAdmin } from '@/redux/slices/authSlice';
 
 // const navItems = [
 //   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
@@ -90,20 +91,21 @@ import {
 //   { to: '/logs', icon: '📋', label: 'Attendance Log' },
 // ];
 const navItems = [
+  // {
+  //   to: "/dashboard",
+  //   icon: LayoutDashboard,
+  //   label: "Dashboard",
+  // },
+  
   {
-    to: "/dashboard",
-    icon: LayoutDashboard,
-    label: "Dashboard",
+    to: "/scan",
+    icon: Camera,
+    label: "Scan Attendance",
   },
   {
     to: "/employees",
     icon: Users,
     label: "Employees",
-  },
-  {
-    to: "/scan",
-    icon: Camera,
-    label: "Scan Attendance",
   },
   
   {
@@ -118,7 +120,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { admin } = useSelector((s) => s.auth);
   const [logoutUser, { isLoading: isLogoutLoading }] = useLogoutMutation();
-
+  console.log("Sidebar admin:", admin);
   // const handleLogout = () => {
   //   //dispatch(logout());
   //   navigate('/login');
@@ -137,6 +139,7 @@ export default function Sidebar({ isOpen, onClose }) {
         //  dispatch(setUser(null));
         //  dispatch(setUserRole(null));
         toast.success(response?.message || 'Logout successful');
+               dispatch(clearAdmin()); // 👈 explicit cleanup
         window.location.href = "/login"; // hard redirect clears memory
       }
     } catch (err) {
@@ -163,11 +166,13 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Admin info */}
       <div className="mx-4 mb-6 flex items-center gap-3 rounded-2xl bg-indigo-50 px-3.5 py-3">
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-100 font-semibold text-indigo-700">
+        <div className="grid h-10 w-10 place-items-center rounded-full 
+        bg-indigo-100 font-semibold text-indigo-700">
           {admin?.name?.[0]?.toUpperCase() || 'A'}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-900">{admin?.name || 'Admin'}</div>
+          <div className="truncate text-sm font-semibold text-slate-900">
+            {admin?.name?.toUpperCase() || 'Admin'}</div>
           {/* <div className="text-xs text-slate-400">Administrator</div> */}
         </div>
       </div>

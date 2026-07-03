@@ -77,26 +77,77 @@ export default function Employees() {
   const [createEmployee, { isLoading: creating }] = useCreateEmployeeMutation();
   const [updateEmployee, { isLoading: updating }] = useUpdateEmployeeMutation();
   const [deleteEmployee] = useDeleteEmployeeMutation();
-
+  const [capturedDescriptors, setCapturedDescriptors] = useState(null);
   const employees = data?.employees ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
   const totalPages = pagination.totalPages || 1;
 
   // ── Camera helpers ───────────────────────────────────────────────────
-  const startCamera = async () => {
+  // const startCamera = async () => {
+  //   try {
+  //     setPhotoMode('camera'); // ensure the <video> element is mounted first
+  //     const stream = await navigator.mediaDevices.getUserMedia({
+  //       video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
+  //     });
+  //     streamRef.current = stream;
+  //     setCameraOn(true);
+  //     // videoRef.current is guaranteed to exist since the <video> tag is
+  //     // always rendered (not conditionally), so this always attaches correctly.
+  //     if (videoRef.current) {
+  //       videoRef.current.srcObject = stream;
+  //       try {
+  //         await videoRef.current.play(); // some mobile browsers need an explicit play()
+  //       } catch (playErr) {
+  //         console.warn('video.play() warning:', playErr);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     toast.error('Could not access camera: ' + err.message);
+  //   }
+  // };
+
+  // const stopCamera = () => {
+  //   if (streamRef.current) {
+  //     streamRef.current.getTracks().forEach((track) => track.stop());
+  //     streamRef.current = null;
+  //   }
+  //   setCameraOn(false);
+  // };
+  // ── Camera helpers ───────────────────────────────────────────────────
+  const [facingMode, setFacingMode] = useState('environment'); // 'environment' = back, 'user' = front
+
+  const startCamera = async (mode = facingMode) => {
     try {
       setPhotoMode('camera'); // ensure the <video> element is mounted first
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
-      });
+
+      // stop any existing stream before requesting a new one
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: mode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+      } catch {
+        // fallback if the specific facingMode isn't supported on this device
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
       streamRef.current = stream;
+      setFacingMode(mode);
       setCameraOn(true);
-      // videoRef.current is guaranteed to exist since the <video> tag is
-      // always rendered (not conditionally), so this always attaches correctly.
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         try {
-          await videoRef.current.play(); // some mobile browsers need an explicit play()
+          await videoRef.current.play();
         } catch (playErr) {
           console.warn('video.play() warning:', playErr);
         }
@@ -104,6 +155,11 @@ export default function Employees() {
     } catch (err) {
       toast.error('Could not access camera: ' + err.message);
     }
+  };
+
+  const switchCamera = async () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    await startCamera(nextMode);
   };
 
   const stopCamera = () => {
@@ -114,28 +170,98 @@ export default function Employees() {
     setCameraOn(false);
   };
 
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  // const capturePhoto = () => {
+  //   if (!videoRef.current || !canvasRef.current) return;
 
+  //   const video = videoRef.current;
+  //   const canvas = canvasRef.current;
+  //   canvas.width = video.videoWidth;
+  //   canvas.height = video.videoHeight;
+  //   const ctx = canvas.getContext('2d');
+  //   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  //   canvas.toBlob((blob) => {
+  //     if (!blob) {
+  //       toast.error('Failed to capture photo, please try again');
+  //       return;
+  //     }
+  //     const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+  //     setPhotoFile(file);
+  //     setPhotoPreview(URL.createObjectURL(blob));
+  //     stopCamera();
+  //   }, 'image/jpeg', 0.92);
+  // };
+  const [captureProgress, setCaptureProgress] = useState(null); // { step, total, prompt } | null
+  const captureCanvasRef = useRef(document.createElement('canvas'));
+
+  const CAPTURE_PROMPTS = [
+    'Look straight at the camera',
+    'Slowly turn your head slightly left',
+    'Slowly turn your head slightly right',
+    'Tilt your chin up slightly',
+    'Look straight again, hold still',
+  ];
+
+  const captureFrameDescriptor = async () => {
+    if (!videoRef.current) return null;
     const video = videoRef.current;
-    const canvas = canvasRef.current;
+    const canvas = captureCanvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        toast.error('Failed to capture photo, please try again');
-        return;
-      }
-      const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(blob));
-      stopCamera();
-    }, 'image/jpeg', 0.92);
+    try {
+      const detection = await faceapi
+        .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      return detection ? { descriptor: Array.from(detection.descriptor), canvas: canvas.toDataURL('image/jpeg', 0.9) } : null;
+    } catch {
+      return null;
+    }
   };
 
+  const captureMultiAngle = async () => {
+    if (!modelsLoaded) {
+      toast.error('Face recognition models still loading, please wait a moment');
+      return;
+    }
+    if (!videoRef.current) return;
+
+    const collected = [];
+    let representativePhoto = null;
+
+    for (let i = 0; i < CAPTURE_PROMPTS.length; i++) {
+      setCaptureProgress({ step: i + 1, total: CAPTURE_PROMPTS.length, 
+        // prompt: CAPTURE_PROMPTS[i] 
+      
+      });
+      await new Promise((res) => setTimeout(res, 400)); // give the person a moment to adjust pose
+
+      const result = await captureFrameDescriptor();
+      if (result) {
+        collected.push(result.descriptor);
+        if (i === 0) representativePhoto = result.canvas; // use the "look straight" frame as the stored photo
+      }
+    }
+
+    setCaptureProgress(null);
+
+    if (collected.length < 3) {
+      toast.error(`Only captured ${collected.length}/5 valid angles. Please ensure good lighting and try again.`);
+      return;
+    }
+
+    // Convert representative frame to a File for upload
+    const blob = await (await fetch(representativePhoto)).blob();
+    const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+    setPhotoFile(file);
+    setPhotoPreview(representativePhoto);
+    setCapturedDescriptors(collected); // new state — holds the array of 128-number arrays
+    stopCamera();
+    toast.success(`Captured ${collected.length} angles successfully`);
+  };
   const switchToUpload = () => {
     stopCamera();
     setPhotoMode('upload');
@@ -150,14 +276,23 @@ export default function Employees() {
     return () => stopCamera();
   }, []);
 
-  const resetForm = () => {
-    setForm({ name: '', phone_number: '', address: '', aadhar_number: '', place_of_posting: '' });
-    setPhotoFile(null);
-    setPhotoPreview(null);
-    setEditingId(null);
-    setPhotoMode('upload');
-    stopCamera();
-  };
+  // const resetForm = () => {
+  //   setForm({ name: '', phone_number: '', address: '', aadhar_number: '', place_of_posting: '' });
+  //   setPhotoFile(null);
+  //   setPhotoPreview(null);
+  //   setEditingId(null);
+  //   setPhotoMode('upload');
+  //   setFacingMode('environment'); // reset to back camera default for next use
+  //   stopCamera();
+  // };
+  // const resetForm = () => {
+  //   setForm({ name: '', phone_number: '', address: '', aadhar_number: '', place_of_posting: '' });
+  //   setPhotoFile(null);
+  //   setPhotoPreview(null);
+  //   setEditingId(null);
+  //   setPhotoMode('upload');
+  //   stopCamera();
+  // };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -192,76 +327,109 @@ export default function Employees() {
     resetForm();
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
 
-    if (!/^\d{10}$/.test(form.phone_number)) {
-      return toast.error('Phone number must be exactly 10 digits');
+  //   if (!/^\d{10}$/.test(form.phone_number)) {
+  //     return toast.error('Phone number must be exactly 10 digits');
+  //   }
+  //   if (!/^\d{12}$/.test(form.aadhar_number)) {
+  //     return toast.error('Aadhar number must be exactly 12 digits');
+  //   }
+
+  //   const isEdit = !!editingId;
+
+  //   // photo is required on create, optional on edit (only if they want to replace it)
+  //   if (!isEdit && !photoFile) {
+  //     return toast.error('Please select or capture a photo');
+  //   }
+
+  //   let descriptorJson = null;
+
+  //   // only run face detection if a NEW photo was selected/captured
+  //   if (photoFile) {
+  //     if (!modelsLoaded) {
+  //       return toast.error('Face recognition models still loading, please wait a moment');
+  //     }
+  //     setDetecting(true);
+  //     try {
+  //       const img = await faceapi.fetchImage(photoPreview);
+  //       const detection = await faceapi
+  //         .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+  //         .withFaceLandmarks()
+  //         .withFaceDescriptor();
+
+  //       if (!detection) {
+  //         toast.error('No face detected in the photo. Please upload or capture a clearer, front-facing photo.');
+  //         return;
+  //       }
+  //       descriptorJson = JSON.stringify(Array.from(detection.descriptor));
+  //     } catch (err) {
+  //       toast.error('Error processing photo: ' + err.message);
+  //       return;
+  //     } finally {
+  //       setDetecting(false);
+  //     }
+  //   }
+
+  //   const fd = new FormData();
+  //   fd.append('name', form.name);
+  //   fd.append('phone_number', form.phone_number);
+  //   fd.append('address', form.address);
+  //   fd.append('aadhar_number', form.aadhar_number);
+  //   fd.append('place_of_posting', form.place_of_posting);
+  //   if (photoFile) fd.append('photo', photoFile);
+  //   if (descriptorJson) fd.append('descriptor', descriptorJson);
+
+  //   try {
+  //     if (isEdit) {
+  //       await updateEmployee({ id: editingId, formData: fd }).unwrap();
+  //       toast.success('Employee updated successfully');
+  //     } else {
+  //       await createEmployee(fd).unwrap();
+  //       toast.success('Employee created and face registered successfully');
+  //       updateParams({ page: 1 }); // go to first page to see the new employee
+  //     }
+  //     setShowForm(false);
+  //     resetForm();
+  //   } catch (err) {
+  //     toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
+  //   }
+  // };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!/^\d{10}$/.test(form.phone_number)) return toast.error('Phone number must be exactly 10 digits');
+  if (!/^\d{12}$/.test(form.aadhar_number)) return toast.error('Aadhar number must be exactly 12 digits');
+
+  const isEdit = !!editingId;
+  if (!isEdit && !photoFile) return toast.error('Please capture a photo');
+  if (!isEdit && !capturedDescriptors) return toast.error('Please complete the multi-angle face capture');
+
+  const fd = new FormData();
+  fd.append('name', form.name);
+  fd.append('phone_number', form.phone_number);
+  fd.append('address', form.address);
+  fd.append('aadhar_number', form.aadhar_number);
+  fd.append('place_of_posting', form.place_of_posting);
+  if (photoFile) fd.append('photo', photoFile);
+  if (capturedDescriptors) fd.append('descriptors', JSON.stringify(capturedDescriptors));
+
+  try {
+    if (isEdit) {
+      await updateEmployee({ id: editingId, formData: fd }).unwrap();
+      toast.success('Employee updated successfully');
+    } else {
+      await createEmployee(fd).unwrap();
+      toast.success('Employee created and face registered successfully');
+      updateParams({ page: 1 });
     }
-    if (!/^\d{12}$/.test(form.aadhar_number)) {
-      return toast.error('Aadhar number must be exactly 12 digits');
-    }
-
-    const isEdit = !!editingId;
-
-    // photo is required on create, optional on edit (only if they want to replace it)
-    if (!isEdit && !photoFile) {
-      return toast.error('Please select or capture a photo');
-    }
-
-    let descriptorJson = null;
-
-    // only run face detection if a NEW photo was selected/captured
-    if (photoFile) {
-      if (!modelsLoaded) {
-        return toast.error('Face recognition models still loading, please wait a moment');
-      }
-      setDetecting(true);
-      try {
-        const img = await faceapi.fetchImage(photoPreview);
-        const detection = await faceapi
-          .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-
-        if (!detection) {
-          toast.error('No face detected in the photo. Please upload or capture a clearer, front-facing photo.');
-          return;
-        }
-        descriptorJson = JSON.stringify(Array.from(detection.descriptor));
-      } catch (err) {
-        toast.error('Error processing photo: ' + err.message);
-        return;
-      } finally {
-        setDetecting(false);
-      }
-    }
-
-    const fd = new FormData();
-    fd.append('name', form.name);
-    fd.append('phone_number', form.phone_number);
-    fd.append('address', form.address);
-    fd.append('aadhar_number', form.aadhar_number);
-    fd.append('place_of_posting', form.place_of_posting);
-    if (photoFile) fd.append('photo', photoFile);
-    if (descriptorJson) fd.append('descriptor', descriptorJson);
-
-    try {
-      if (isEdit) {
-        await updateEmployee({ id: editingId, formData: fd }).unwrap();
-        toast.success('Employee updated successfully');
-      } else {
-        await createEmployee(fd).unwrap();
-        toast.success('Employee created and face registered successfully');
-        updateParams({ page: 1 }); // go to first page to see the new employee
-      }
-      setShowForm(false);
-      resetForm();
-    } catch (err) {
-      toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
-    }
-  };
-
+    setShowForm(false);
+    resetForm();
+  } catch (err) {
+    toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
+  }
+};
   const handleDelete = async (id) => {
     if (!confirm('Delete this employee?')) return;
     try {
@@ -273,14 +441,24 @@ export default function Employees() {
       alert(err?.data?.message || 'Error deleting employee');
     }
   };
-
+  
+const resetForm = () => {
+  setForm({ name: '', phone_number: '', address: '', aadhar_number: '', place_of_posting: '' });
+  setPhotoFile(null);
+  setPhotoPreview(null);
+  setCapturedDescriptors(null);
+  setEditingId(null);
+  setPhotoMode('upload');
+  setFacingMode('environment');
+  stopCamera();
+};
   if (isLoading) return <Spinner size="lg" text="Loading employees..." />;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-slate-900">Employees</h2>
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-2 ">
           <input
             type="text"
             value={searchInput}
@@ -288,8 +466,52 @@ export default function Employees() {
             placeholder="Search ..."
             className="w-64 rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
           />
-          <Button onClick={showForm ? handleCancel : openCreateForm}>
+          <Button
+            className="w-full sm:w-auto text-sm px-3 py-2 mr-2"
+            onClick={showForm ? handleCancel : openCreateForm}
+          >
+            {showForm ? "Cancel" : "+ Add Employee"}
+          </Button>
+          {/* <Button onClick={showForm ? handleCancel : openCreateForm}>
             {showForm ? 'Cancel' : '+ Add Employee'}
+          </Button> 
+        </div> 
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search employees..."
+            className="w-full sm:w-64 rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          />
+
+          <Button
+            className="w-full sm:w-auto px-4 py-2 text-sm"
+            onClick={showForm ? handleCancel : openCreateForm}
+          >
+            {showForm ? "Cancel" : "+ Add Employee"}
+          </Button>
+        </div>
+      </div> */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-bold text-slate-900">
+          Employees
+        </h2>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search employees..."
+            className="w-full sm:w-64 rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          />
+
+          <Button
+            className="w-full sm:w-auto px-4 py-2 text-sm"
+            onClick={showForm ? handleCancel : openCreateForm}
+          >
+            {showForm ? "Cancel" : "+ Add Employee"}
           </Button>
         </div>
       </div>
@@ -380,9 +602,12 @@ export default function Employees() {
                           className="hidden"
                         />
                       </label>
-                      <Button type="button" variant="outline" onClick={startCamera}>
+                      <Button type="button" variant="outline" onClick={() => startCamera()}>
                         📷 Take Photo
                       </Button>
+                      {/* <Button type="button" variant="outline" onClick={startCamera}>
+                        📷 Take Photo
+                      </Button> */}
                     </div>
                   )}
 
@@ -393,16 +618,23 @@ export default function Employees() {
                     className={`relative overflow-hidden rounded-xl bg-black ${cameraOn ? 'block' : 'hidden'}`}
                     style={{ maxWidth: 320 }}
                   >
-                    <video
+                    {/* <video
                       ref={videoRef}
                       autoPlay
                       playsInline
                       muted
                       className="w-full scale-x-[-1]"
+                    /> */}
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`w-full ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                     />
                   </div>
 
-                  {cameraOn && (
+                  {/* {cameraOn && (
                     <div className="mt-2 flex gap-2">
                       <Button type="button" onClick={capturePhoto}>
                         📸 Capture Photo
@@ -410,6 +642,71 @@ export default function Employees() {
                       <Button type="button" variant="outline" onClick={stopCamera}>
                         Cancel
                       </Button>
+                    </div>
+                  )} */}
+                  {/* {cameraOn && (
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {/* // <div className="mt-2 flex gap-2"> 
+                      <Button
+                        type="button"
+                        className="text-xs px-2 py-2"
+                        onClick={capturePhoto}
+                      >
+                        📸 Capture
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="text-xs px-2 py-2"
+                        onClick={switchCamera}
+                      >
+                        🔄 {facingMode === "environment" ? "Front" : "Back"}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="text-xs px-2 py-2"
+                        onClick={stopCamera}
+                      >
+                        ✕ Cancel
+                      </Button>
+                      {/* <Button type="button" onClick={capturePhoto}>
+                        📸 Capture Photo
+                      </Button>
+                      <Button type="button" variant="outline" onClick={switchCamera}>
+                        🔄 {facingMode === 'environment' ? 'Front' : 'Back'} Camera
+                      </Button>
+                      <Button type="button" variant="outline" onClick={stopCamera}>
+                        Cancel
+                      </Button> 
+                    </div>
+                  )} */}
+                  {cameraOn && !captureProgress && (
+                    <div className="mt-2 flex gap-2">
+                      <Button type="button" onClick={captureMultiAngle}>
+                        📸 Capture Photo
+                      </Button>
+                      <Button type="button" variant="outline" onClick={switchCamera}>
+                        🔄 {facingMode === 'environment' ? 'Front' : 'Back'} Camera
+                      </Button>
+                      <Button type="button" variant="outline" onClick={stopCamera}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+
+                  {captureProgress && (
+                    <div className="mt-2 rounded-xl bg-indigo-50 px-4 py-3 text-center">
+                      <p className="text-sm font-semibold text-indigo-700">{captureProgress.prompt}</p>
+                      <p className="mt-1 text-xs text-indigo-500">Step {captureProgress.step} of {captureProgress.total}</p>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
+                        <div
+                          className="h-full bg-indigo-600 transition-all"
+                          style={{ width: `${(captureProgress.step / captureProgress.total) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   )}
 
