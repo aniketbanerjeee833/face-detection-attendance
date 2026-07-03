@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { useGetTodaySummaryQuery } from '../redux/api/attendanceApi';
-import { useGetAdminsListQuery } from '../redux/api/employeeApi';
+
 import Spinner from '../components/ui/Spinner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { setDashboardDate } from '@/redux/slices/uiSlice';
 
 const STAT_STYLES = {
@@ -29,8 +29,8 @@ export default function Dashboard() {
     admin_id: adminIdFilter,
   });
 
-  const { data: adminsListData } = useGetAdminsListQuery(undefined, { skip: !isSuperAdmin });
-  const adminsList = adminsListData?.admins ?? [];
+  // const { data: adminsListData } = useGetAdminsListQuery(undefined, { skip: !isSuperAdmin });
+  // const adminsList = adminsListData?.admins ?? [];
 
   if (summaryLoading) return <Spinner size="lg" text="Loading dashboard..." />;
 
