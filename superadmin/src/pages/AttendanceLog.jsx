@@ -339,7 +339,7 @@ export default function AttendanceLog() {
                   <th className="px-6 py-3 font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              {/* <tbody className="divide-y divide-slate-50">
                 {logs?.map((log, i) => (
                   <tr key={log.id} className="hover:bg-blue-50/40">
                     <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
@@ -356,7 +356,43 @@ export default function AttendanceLog() {
                     </td>
                   </tr>
                 ))}
-              </tbody>
+              </tbody> */}
+              <tbody className="divide-y divide-slate-50">
+  {logs?.map((emp, i) => (
+    <tr key={emp.employee_id} className="hover:bg-blue-50/40 align-top">
+      <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
+      <td className="px-6 py-3 font-semibold text-slate-900">{emp.name}</td>
+      {isSuperAdmin && (
+        <td className="px-6 py-3 text-slate-500">{emp.admin_name}</td>
+      )}
+      <td className="px-6 py-3 text-slate-500">
+        <div className="space-y-1.5">
+          {emp.sessions.map((s) => (
+            <div key={s.id}>{s.in_time}</div>
+          ))}
+        </div>
+      </td>
+      <td className="px-6 py-3 text-slate-500">
+        <div className="space-y-1.5">
+          {emp.sessions.map((s) => (
+            <div key={s.id}>
+              {s.out_time ?? <span className="text-amber-500 text-xs font-medium">On Duty</span>}
+            </div>
+          ))}
+        </div>
+      </td>
+      <td className="px-6 py-3">
+        <div className="space-y-1.5">
+          {emp.sessions.map((s) => (
+            <div key={s.id}>
+              <Badge status={s.status === "checked-out" ? "Duty Over" : "Duty In"} />
+            </div>
+          ))}
+        </div>
+      </td>
+    </tr>
+  ))}
+</tbody>
             </table>
           </div>
           {logs?.length > 0 && (

@@ -663,6 +663,36 @@ export default function ScanAttendance() {
           return;
         }
 
+        // try {
+        //   const data = await markAttendance({
+        //     employee_id: match.employee.id,
+        //     confidence: match.confidence,
+        //   }).unwrap();
+
+        //   setResult({
+        //     type: 'success',
+        //     scanType: data.type, // 'in' or 'out'
+        //     employee: match.employee,
+        //     confidence: match.confidence,
+        //     returnTo,
+        //   });
+        // } 
+
+        // catch (err) {
+        //   const payload = err?.data;
+        //   if (payload?.type === 'done') {
+        //     setResult({
+        //       type: 'success',
+        //       scanType: 'done',
+        //       employee: match.employee,
+        //       confidence: match.confidence,
+        //       returnTo,
+        //     });
+        //   } else {
+        //     setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
+        //   }
+        // }
+
         try {
           const data = await markAttendance({
             employee_id: match.employee.id,
@@ -671,24 +701,14 @@ export default function ScanAttendance() {
 
           setResult({
             type: 'success',
-            scanType: data.type, // 'in' or 'out'
+            scanType: data.type, // always 'in' or 'out' now
             employee: match.employee,
             confidence: match.confidence,
             returnTo,
           });
         } catch (err) {
           const payload = err?.data;
-          if (payload?.type === 'done') {
-            setResult({
-              type: 'success',
-              scanType: 'done',
-              employee: match.employee,
-              confidence: match.confidence,
-              returnTo,
-            });
-          } else {
-            setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
-          }
+          setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
         }
       } catch (err) {
         console.error('Detection error:', err);
@@ -768,7 +788,7 @@ export default function ScanAttendance() {
                 videoRef={videoRef}
                 canvasRef={canvasRef}
                 cameraActive={cameraActive}
-                  facingMode={facingMode}
+                facingMode={facingMode}
                 onStart={() => startCamera()}
               />
               {/* <CameraFeed

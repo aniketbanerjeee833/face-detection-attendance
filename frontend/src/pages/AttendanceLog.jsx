@@ -304,7 +304,7 @@ export default function AttendanceLog() {
           className="overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-100"
         >
           <div className="overflow-x-auto">
-               <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
                   <th className="px-6 py-3 font-medium">Sl No</th>
@@ -315,36 +315,83 @@ export default function AttendanceLog() {
                   <th className="px-6 py-3 font-medium">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              {/* <tbody className="divide-y divide-slate-50">
+               
                 {logs?.map((log, i) => (
                   <tr key={log.id} className="hover:bg-blue-50/40">
                     <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
                     <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
                     <td className="px-6 py-3 text-slate-500">{log.in_time}</td>
                     <td className="px-6 py-3 text-slate-500">
-                      {log.out_time ?? <span className="text-amber-500 text-xs font-medium">
-                        On Duty</span>}
+                      {log.out_time ?? <span className="text-amber-500 text-xs font-medium">On Duty</span>}
                     </td>
                     <td className="px-6 py-3">
-                      <Badge status={log.status==="checked-out" ? "Duty Over" : "Duty In"} />
-                      </td>
+                      <Badge status={log.status === "checked-out" ? "Duty Over" : "Duty In"} />
+                    </td>
                     <td className="px-6 py-3">
                       {!log.out_time && (
-                        <Button
-                          size="sm"
-                          variant="checkOut"
-                          className='cursor-pointer'
-                          onClick={() => handleCheckOutClick(log)}
-                        >
+                        <Button size="sm" variant="checkOut" className="cursor-pointer" onClick={() => handleCheckOutClick(log)}>
                           Check Out
                         </Button>
                       )}
                     </td>
                   </tr>
                 ))}
+              </tbody> */}
+              <tbody className="divide-y divide-slate-50">
+                {logs?.map((emp, i) => (
+                  <tr key={emp.employee_id} className="hover:bg-blue-50/40 align-top">
+                    <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
+                    <td className="px-6 py-3 font-semibold text-slate-900">{emp.name}</td>
+                    <td className="px-6 py-3 text-slate-500">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>{s.in_time}</div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 text-slate-500">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>
+                            {s.out_time ?? <span className="text-amber-500 text-xs font-medium">On Duty</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>
+                            <Badge status={s.status === "checked-out" ? "Duty Over" : "Duty In"} />
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>
+                            {!s.out_time && (
+                              <Button
+                                size="sm"
+                                variant="checkOut"
+                                className="cursor-pointer"
+                                onClick={() => handleCheckOutClick({ employee_id: emp.employee_id, name: emp.name })}
+                              >
+                                Check Out
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+
           {logs?.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100">
               <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -403,3 +450,32 @@ export default function AttendanceLog() {
     </div>
   );
 }
+
+
+
+{/* {logs?.map((log, i) => (
+                  <tr key={log.id} className="hover:bg-blue-50/40">
+                    <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
+                    <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
+                    <td className="px-6 py-3 text-slate-500">{log.in_time}</td>
+                    <td className="px-6 py-3 text-slate-500">
+                      {log.out_time ?? <span className="text-amber-500 text-xs font-medium">
+                        On Duty</span>}
+                    </td>
+                    <td className="px-6 py-3">
+                      <Badge status={log.status==="checked-out" ? "Duty Over" : "Duty In"} />
+                      </td>
+                    <td className="px-6 py-3">
+                      {!log.out_time && (
+                        <Button
+                          size="sm"
+                          variant="checkOut"
+                          className='cursor-pointer'
+                          onClick={() => handleCheckOutClick(log)}
+                        >
+                          Check Out
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))} */}
