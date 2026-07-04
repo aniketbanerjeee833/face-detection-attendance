@@ -238,15 +238,19 @@ const loginCore = async (req, res, requiredRole) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     const account = rows[0];
+    console.log(`Login attempt for ${username} with role ${account.role}`);
     const match = await bcrypt.compare(password, account.password);
-    if (!match)
-      return res.status(401).json({ success: false, message: 'Invalid password' });
-
-    if (account.role !== requiredRole)
-      return res.status(403).json({
-        success: false,
-        message: `This account does not have access to the ${requiredRole} portal`,
-      });
+     if (!match || account.role !== requiredRole) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    // if (!match)
+    //   return res.status(401).json({ success: false, message: 'Invalid password' });
+    // console.log(requiredRole, account.role);
+    // if (account.role !== requiredRole)
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: `This account does not have access to the ${requiredRole} portal`,
+    //   });
 
     const sessionId = crypto.randomBytes(32).toString('hex');
     await db.execute(
@@ -307,29 +311,60 @@ const logoutSuperAdmin = asyncHandler(async (req, res) => {
 });
 
 // ✅ getMe reads the correct cookie based on which portal calls it
-const getMe = asyncHandler(async (req, res) => {
-  // Try both cookies — whichever is present wins
-  const sessionId =
-    req.cookies.superadmin_session_id || req.cookies.admin_session_id;
+// const getMe = asyncHandler(async (req, res) => {
+//   // Try both cookies — whichever is present wins
+//   const sessionId =
+//     req.cookies.superadmin_session_id || req.cookies.admin_session_id;
 
+//   if (!sessionId) return res.json({ authenticated: false, user: null });
+
+//   try {
+//     const [rows] = await db.execute(
+//       `SELECT us.admin_id, u.id, u.name, u.username, u.role
+//        FROM admin_sessions us
+//        JOIN admins u ON us.admin_id = u.id
+//        WHERE us.session_id = ? AND us.expires_at > NOW()`,
+//       [sessionId]
+//     );
+
+//     if (!rows.length) return res.json({ authenticated: false, user: null });
+
+//     return res.json({ authenticated: true, success: true, user: rows[0] });
+//   } catch (err) {
+//     console.error('GetMe error:', err);
+//     return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+//   }
+// });
+// authController.js
+const getMeAdmin = asyncHandler(async (req, res) => {
+  const sessionId = req.cookies.admin_session_id;
   if (!sessionId) return res.json({ authenticated: false, user: null });
 
-  try {
-    const [rows] = await db.execute(
-      `SELECT us.admin_id, u.id, u.name, u.username, u.role
-       FROM admin_sessions us
-       JOIN admins u ON us.admin_id = u.id
-       WHERE us.session_id = ? AND us.expires_at > NOW()`,
-      [sessionId]
-    );
-
-    if (!rows.length) return res.json({ authenticated: false, user: null });
-
-    return res.json({ authenticated: true, success: true, user: rows[0] });
-  } catch (err) {
-    console.error('GetMe error:', err);
-    return res.status(500).json({ success: false, message: 'Server error', error: err.message });
-  }
+  const [rows] = await db.execute(
+    `SELECT us.admin_id, u.id, u.name, u.username, u.role
+     FROM admin_sessions us
+     JOIN admins u ON us.admin_id = u.id
+     WHERE us.session_id = ? AND us.expires_at > NOW() AND u.role = 'admin'`,
+    [sessionId]
+  );
+  if (!rows.length) return res.json({ authenticated: false, user: null });
+  return res.json({ authenticated: true, success: true, user: rows[0] });
 });
 
-export { loginAdmin, loginSuperAdmin, getMe, logoutAdmin, logoutSuperAdmin };
+const getMeSuperAdmin = asyncHandler(async (req, res) => {
+  const sessionId = req.cookies.superadmin_session_id;
+  if (!sessionId) return res.json({ authenticated: false, user: null });
+
+  const [rows] = await db.execute(
+    `SELECT us.admin_id, u.id, u.name, u.username, u.role
+     FROM admin_sessions us
+     JOIN admins u ON us.admin_id = u.id
+     WHERE us.session_id = ? AND us.expires_at > NOW() AND u.role = 'superadmin'`,
+    [sessionId]
+  );
+  if (!rows.length) return res.json({ authenticated: false, user: null });
+  return res.json({ authenticated: true, success: true, user: rows[0] });
+});
+
+export { loginAdmin, loginSuperAdmin, getMeAdmin, getMeSuperAdmin, logoutAdmin, logoutSuperAdmin };
+

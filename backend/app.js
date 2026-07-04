@@ -9,6 +9,7 @@ import attendanceRoutes from './src/routes/attendanceRoutes.js';
 import { fileURLToPath } from 'url';
 import { errorHandler, notFound } from './src/middleware/errorHandler.js';
 import cookieParser from "cookie-parser";
+import startSessionCleanupJob from './src/utils/sessionCleanUpJob.js';
 const app = express();
 app.use(cookieParser());
 const allowedOrigins = [
@@ -50,4 +51,8 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
 app.use(notFound);       // 404 for unknown routes
 app.use(errorHandler);   // catches everything forwarded via next(err)
 const PORT = 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  startSessionCleanupJob(); // 👈 start the cron job once the server is up
+})
+// app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

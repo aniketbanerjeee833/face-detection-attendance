@@ -89,7 +89,7 @@ export default function RouterWrapper() {
   useFaceModels();
   // ✅ Call backend to check session
   useEffect(() => {
-    fetch("http://localhost:5000/api/auth/me", {
+    fetch("http://localhost:5000/api/auth/admin/me", {
       credentials: "include",
     })
       .then((res) => res.json())

@@ -87,7 +87,7 @@ export default function RouterWrapper() {
 const dispatch = useDispatch();
   // ✅ Call backend to check session
   useEffect(() => {
-    fetch("http://localhost:5000/api/auth/me", {
+    fetch("http://localhost:5000/api/auth/superadmin/me", {
       credentials: "include",
     })
       .then((res) => res.json())

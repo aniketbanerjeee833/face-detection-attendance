@@ -495,46 +495,5 @@ const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
 });
 
 
-// const getTodaySummary = asyncHandler(async (req, res) => {
-//   const today = new Date().toISOString().split("T")[0];
 
-//   try {
-//     const [[{ total }]] = await db.query(
-//       "SELECT COUNT(*) AS total FROM employees"
-//     );
-
-//     const [[{ present }]] = await db.query(
-//       `
-//       SELECT COUNT(*) AS present
-//       FROM attendance
-//       WHERE DATE(in_time) = ?
-//         AND status = 'present'
-//       `,
-//       [today]
-//     );
-
-//     const [[{ late }]] = await db.query(
-//       `
-//       SELECT COUNT(*) AS late
-//       FROM attendance
-//       WHERE DATE(marked_at) = ?
-//         AND status = 'late'
-//       `,
-//       [today]
-//     );
-
-//     res.json({
-//       total,
-//       present,
-//       late,
-//       absent: total - present - late,
-//       date: today,
-//     });
-//   } catch (err) {
-//     res.status(500).json({
-//       message: "Server error",
-//       error: err.message,
-//     });
-//   }
-// });
 export { markAttendance, getAttendance, getSummary, getAttendanceSuperAdmin };

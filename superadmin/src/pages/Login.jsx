@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useLoginMutation } from '@/redux/api/authApi';
-import { ShieldCheck, User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import {  User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 
 export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' });
@@ -386,9 +386,15 @@ export default function Login() {
         <div className="l-right">
           <div className="l-card">
 
-            <div className="l-logo">
+            {/* <div className="l-logo">
               <ShieldCheck size={32} strokeWidth={1.8} />
-            </div>
+            </div> */}
+             <div className="l-logo">
+  <i
+    className="fa-solid fa-user-check"
+    style={{ fontSize: "26px" }}
+  ></i>
+</div>
 
             <h2 className="l-title">Police Station</h2>
             <p className="l-sub">Sign in to continue</p>
