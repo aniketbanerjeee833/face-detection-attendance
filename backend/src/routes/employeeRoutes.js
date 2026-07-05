@@ -8,7 +8,8 @@ import { getAllEmployees, getEmployee, createEmployee,
     saveFaceDescriptor, deleteEmployee, 
     updateEmployee,
     getAllEmployeesSuperAdmin,
-    getAllAdmins} from '../controllers/employeeController.js';
+    getAllAdmins,
+    getAllEmployeesForMatching} from '../controllers/employeeController.js';
 // import userAuth from '../middleware/userAuth.js';
 // import adminAuth from '../middleware/adminAuth.js';
 // import superAdminAuth from '../middleware/superAdminAuth.js';
@@ -37,7 +38,8 @@ router.get('/:id', adminUserAuth, adminAuth, getEmployee);
 router.post('/', adminUserAuth, adminAuth, uploadEmployeePhoto,createEmployee);
 router.put('/:id', adminUserAuth, adminAuth,uploadEmployeePhoto, updateEmployee);
 router.delete('/:id', adminUserAuth, adminAuth, deleteEmployee);
-
+// employeeRoutes.js
+router.get('/match/all', adminUserAuth, adminAuth, getAllEmployeesForMatching);
 // Superadmin-only (read-only, all admins)
 router.get('/superadmin/all', superAdminUserAuth, superAdminAuth, getAllEmployeesSuperAdmin);
 router.get('/superadmin/admins', superAdminUserAuth, superAdminAuth, getAllAdmins);

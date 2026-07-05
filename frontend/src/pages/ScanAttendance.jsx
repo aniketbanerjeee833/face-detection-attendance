@@ -202,7 +202,7 @@ import CameraFeed from '../components/face/CameraFeed';
 import ResultOverlay from '../components/face/ResultOverlay';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
-import { useGetEmployeesQuery } from '../redux/api/employeeApi';
+import { useGetAllEmployeesForMatchingQuery } from '../redux/api/employeeApi';
 import { useMarkAttendanceMutation } from '../redux/api/attendanceApi';
 
 // export default function ScanAttendance() {
@@ -580,7 +580,8 @@ export default function ScanAttendance() {
   const [result, setResult] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [debugInfo, setDebugInfo] = useState(null);
-  const { data: empData } = useGetEmployeesQuery({ page: 1, limit: 100 });
+  const { data: empData } = useGetAllEmployeesForMatchingQuery();
+  // const { data: empData } = useGetEmployeesQuery({ page: 1, limit: 100 });
   const employees = (empData?.employees ?? []).filter((e) => e.face_descriptor);
 
   const [markAttendance] = useMarkAttendanceMutation();
@@ -628,41 +629,60 @@ export default function ScanAttendance() {
         scanningRef.current = false;
         setScanning(false);
 
-        //         const match = findBestMatch(detection.descriptor, employees);
-        //         setDebugInfo({
-        //   closest: match.closestEmployee?.name || 'none',
-        //   distance: match.distance === Infinity ? 'N/A' : match.distance.toFixed(3),
-        //   isMatch: match.isMatch,
+        
+        // const match = findBestMatch(detection.descriptor, employees);
+        // const debug = findClosestForDebug(detection.descriptor, employees);
+
+        // setDebugInfo({
+        //   closest: debug.closestEmployee?.name || 'none',
+        //   distance: debug.distance === Infinity ? 'N/A' : debug.distance.toFixed(3),
+        //   isMatch: !!match,
         // });
-        //         if (!match) {
-        //           setResult({ type: 'fail', message: 'Face not recognized' });
-        //           return;
-        //         }
-        const match = findBestMatch(detection.descriptor, employees);
-        const debug = findClosestForDebug(detection.descriptor, employees);
 
-        setDebugInfo({
-          closest: debug.closestEmployee?.name || 'none',
-          distance: debug.distance === Infinity ? 'N/A' : debug.distance.toFixed(3),
-          isMatch: !!match,
-        });
-
-        if (!match) {
-          setResult({ type: 'fail', message: 'Face not recognized' });
-          return;
-        }
+        // if (!match) {
+        //   setResult({ type: 'fail', message: 'Face not recognized' });
+        //   return;
+        // }
 
 
 
-        // ── Checkout-mode guard: make sure the right person is in front of the camera ──
-        if (checkoutMode && expectedEmpId && match.employee.id !== expectedEmpId) {
-          setResult({
-            type: 'fail',
-            message: `This isn't ${expectedEmpName}. Please make sure the correct person is scanning to check out.`,
-          });
-          return;
-        }
+        // // ── Checkout-mode guard: make sure the right person is in front of the camera ──
+        // if (checkoutMode && expectedEmpId && match.employee.id !== expectedEmpId) {
+        //   setResult({
+        //     type: 'fail',
+        //     message: `This isn't ${expectedEmpName}. Please make sure the correct person is scanning to check out.`,
+        //   });
+        //   return;
+        // }
+        // ── 1:1 verification when we already know who to expect (checkout flow) ──
+// Instead of matching against the whole workforce (1:N identification, which
+// risks confusing two similar-looking employees), narrow the candidate pool
+// to exactly the one expected employee. A match here can ONLY be that
+// employee — so the old post-hoc "is this the right person" check is no
+// longer needed; the pool itself guarantees it.
+const candidatePool =
+  checkoutMode && expectedEmpId
+    ? employees.filter((e) => e.id === expectedEmpId)
+    : employees;
 
+const match = findBestMatch(detection.descriptor, candidatePool);
+const debug = findClosestForDebug(detection.descriptor, candidatePool);
+
+setDebugInfo({
+  closest: debug.closestEmployee?.name || 'none',
+  distance: debug.distance === Infinity ? 'N/A' : debug.distance.toFixed(3),
+  isMatch: !!match,
+});
+
+if (!match) {
+  setResult({
+    type: 'fail',
+    message: checkoutMode
+      ? `Face doesn't match ${expectedEmpName}. Please make sure the correct person is scanning to check out.`
+      : 'Face not recognized',
+  });
+  return;
+}
         // try {
         //   const data = await markAttendance({
         //     employee_id: match.employee.id,
@@ -720,18 +740,35 @@ export default function ScanAttendance() {
     }, 800);
   }, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance, checkoutMode, expectedEmpId, expectedEmpName, returnTo]);
 
-  const handleReset = () => {
-    clearInterval(intervalRef.current);
-    scanningRef.current = false;
-    isProcessingRef.current = false;
-    setScanning(false);
-    setResult(null);
-    setStatusMsg('');
-    if (canvasRef.current) {
-      canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    }
-  };
+  // const handleReset = () => {
+  //   clearInterval(intervalRef.current);
+  //   scanningRef.current = false;
+  //   isProcessingRef.current = false;
+  //   setScanning(false);
+  //   setResult(null);
+  //   setStatusMsg('');
+  //   if (canvasRef.current) {
+  //     canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  //   }
+  // };
+const handleReset = () => {
+  clearInterval(intervalRef.current);
+  scanningRef.current = false;
+  isProcessingRef.current = false;
+  setScanning(false);
+  setResult(null);
+  setStatusMsg('');
+  if (canvasRef.current) {
+    canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  }
 
+  // Checkout mode has no manual "Scan Now" button — restarting must happen
+  // explicitly here rather than relying on the auto-start effect, since that
+  // effect doesn't depend on `result` and won't re-fire after a failed scan.
+  if (checkoutMode && cameraActive && modelsLoaded) {
+    startScanning();
+  }
+};
   const handleStopCamera = () => {
     clearInterval(intervalRef.current);
     scanningRef.current = false;
@@ -767,12 +804,12 @@ export default function ScanAttendance() {
     <>
 
       <div>
-        {debugInfo && (
+        {/* {debugInfo && (
           <div className="fixed bottom-2 left-2 right-2 z-50 rounded-lg bg-black/80 p-2 text-center text-xs text-white">
             Closest: {debugInfo.closest} ·
             Distance: {debugInfo.distance} · {debugInfo.isMatch ? '✅ Match' : '❌ No match'}
           </div>
-        )}
+        )} */}
         {checkoutMode && (
           <div className="mb-4 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700">
             Checking out: <strong>{expectedEmpName}</strong>

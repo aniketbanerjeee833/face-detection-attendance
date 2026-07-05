@@ -100,6 +100,18 @@ const getEmployee = asyncHandler(async (req, res) => {
   res.json({ employee: rows[0] });
 });
 
+const getAllEmployeesForMatching = asyncHandler(async (req, res) => {
+  const [employees] = await db.query(
+    `SELECT id, name, photo_url, face_descriptor
+     FROM employees
+     WHERE admin_id = ?
+       AND face_descriptor IS NOT NULL`,
+    [req.adminId]
+  );
+
+  res.json({ employees });
+});
+
 // MySQL duplicate entry — errorHandler maps ER_DUP_ENTRY → 409 automatically
 
 //OLD
@@ -850,7 +862,7 @@ const getAllAdmins = asyncHandler(async (req, res) => {
 
 
 export { getAllEmployees, getEmployee, createEmployee, saveFaceDescriptor, 
-  deleteEmployee, updateEmployee, getAllEmployeesSuperAdmin, getAllAdmins };
+  deleteEmployee, updateEmployee, getAllEmployeesSuperAdmin, getAllAdmins,getAllEmployeesForMatching };
 
 // const updateEmployee = asyncHandler(async (req, res) => {
 //   const connection = await db.getConnection();

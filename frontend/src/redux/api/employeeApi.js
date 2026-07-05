@@ -26,17 +26,18 @@ export const employeeApi = createApi({
         ]
       : [{ type: 'Employee', id: 'LIST' }],
 }),
-    // getEmployees: build.query({
-    //   query: ({ page ,limit,search } = {}) =>
-    //     `/employees?page=${page}&limit=${limit}&search=${search}`,
-    //   providesTags: (result) =>
-    //     result?.employees
-    //       ? [
-    //           ...result.employees.map(({ id }) => ({ type: 'Employee', id })),
-    //           { type: 'Employee', id: 'LIST' },
-    //         ]
-    //       : [{ type: 'Employee', id: 'LIST' }],
-    // }),
+
+getAllEmployeesForMatching: build.query({
+  query: () => '/employees/match/all',
+  providesTags: (result) =>
+    result?.employees
+      ? [
+          ...result.employees.map(({ id }) => ({ type: 'Employee', id })),
+          { type: 'Employee', id: 'LIST' },
+        ]
+      : [{ type: 'Employee', id: 'LIST' }],
+}),
+  
 
     getEmployee: build.query({
       query: (id) => `/employees/${id}`,
@@ -88,6 +89,7 @@ export const employeeApi = createApi({
 
 export const {
   useGetEmployeesQuery,
+  useGetAllEmployeesForMatchingQuery,
   useGetEmployeeQuery,
   useCreateEmployeeMutation,
   useSaveDescriptorMutation,
