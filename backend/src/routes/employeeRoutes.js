@@ -9,7 +9,8 @@ import { getAllEmployees, getEmployee, createEmployee,
     updateEmployee,
     getAllEmployeesSuperAdmin,
     getAllAdmins,
-    getAllEmployeesForMatching} from '../controllers/employeeController.js';
+    getAllEmployeesForMatching,
+    getEmployeeByAadhar} from '../controllers/employeeController.js';
 // import userAuth from '../middleware/userAuth.js';
 // import adminAuth from '../middleware/adminAuth.js';
 // import superAdminAuth from '../middleware/superAdminAuth.js';
@@ -41,6 +42,8 @@ router.delete('/:id', adminUserAuth, adminAuth, deleteEmployee);
 // employeeRoutes.js
 router.get('/match/all', adminUserAuth, adminAuth, getAllEmployeesForMatching);
 // Superadmin-only (read-only, all admins)
+// employeeRoutes.js
+router.get('/aadhar/:aadhar', adminUserAuth, adminAuth, getEmployeeByAadhar);
 router.get('/superadmin/all', superAdminUserAuth, superAdminAuth, getAllEmployeesSuperAdmin);
 router.get('/superadmin/admins', superAdminUserAuth, superAdminAuth, getAllAdmins);
 

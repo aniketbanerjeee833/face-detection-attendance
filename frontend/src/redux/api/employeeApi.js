@@ -81,6 +81,10 @@ getAllEmployeesForMatching: build.query({
         { type: 'Employee', id: 'LIST' },
       ],
     }),
+    // employeeApi.js
+getEmployeeByAadhar: build.query({
+  query: (aadhar) => `/employees/aadhar/${aadhar}`,
+}),
 
  
 
@@ -95,6 +99,7 @@ export const {
   useSaveDescriptorMutation,
   useDeleteEmployeeMutation,
   useUpdateEmployeeMutation,
+  useLazyGetEmployeeByAadharQuery,
 
   
 } = employeeApi;

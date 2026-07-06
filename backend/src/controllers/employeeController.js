@@ -102,7 +102,7 @@ const getEmployee = asyncHandler(async (req, res) => {
 
 const getAllEmployeesForMatching = asyncHandler(async (req, res) => {
   const [employees] = await db.query(
-    `SELECT id, name, photo_url, face_descriptor
+    `SELECT id, name, photo_url, face_descriptor,aadhar_number
      FROM employees
      WHERE admin_id = ?
        AND face_descriptor IS NOT NULL`,
@@ -806,6 +806,7 @@ const deleteEmployee = asyncHandler(async (req, res) => {
 });
 
 
+
 // GET all employees across all admins, optional ?admin_id= filter, no create/update/delete exposed
 const getAllEmployeesSuperAdmin = asyncHandler(async (req, res) => {
   const page = Number(req.query.page || 1);
@@ -859,10 +860,38 @@ const getAllAdmins = asyncHandler(async (req, res) => {
   );
   res.json({ admins });
 });
+// employeeController.js
+const getEmployeeByAadhar = asyncHandler(async (req, res) => {
+  const { aadhar } = req.params;
+
+  if (!/^\d{12}$/.test(aadhar)) {
+    return res.status(400).json({ message: 'Enter a valid 12-digit Aadhar number' });
+  }
+
+  const [rows] = await db.query(
+    `SELECT id, name, photo_url, face_descriptor
+     FROM employees
+     WHERE aadhar_number = ? AND admin_id = ?`,
+    [aadhar, req.adminId]
+  );
+
+  if (!rows.length) {
+    return res.status(404).json({ message: 'No employee found with this Aadhar number' });
+  }
+
+  const employee = rows[0];
+  if (!employee.face_descriptor) {
+    return res.status(400).json({ message: 'This employee has no registered face data' });
+  }
+
+  res.json({ employee });
+});
+
 
 
 export { getAllEmployees, getEmployee, createEmployee, saveFaceDescriptor, 
-  deleteEmployee, updateEmployee, getAllEmployeesSuperAdmin, getAllAdmins,getAllEmployeesForMatching };
+  deleteEmployee, updateEmployee, getAllEmployeesSuperAdmin, getAllAdmins,
+  getAllEmployeesForMatching, getEmployeeByAadhar };
 
 // const updateEmployee = asyncHandler(async (req, res) => {
 //   const connection = await db.getConnection();

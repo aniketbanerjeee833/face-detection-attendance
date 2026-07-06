@@ -294,12 +294,54 @@ export default function Employees() {
   //   stopCamera();
   // };
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-  };
+  const handlePhotoChange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!modelsLoaded) {
+    toast.error('Face recognition models still loading, please wait a moment');
+    e.target.value = ''; // reset the file input so they can retry once models are ready
+    return;
+  }
+
+  const preview = URL.createObjectURL(file);
+  setPhotoFile(file);
+  setPhotoPreview(preview);
+  setCapturedDescriptors(null); // clear any previous capture while we process this one
+
+  setDetecting(true);
+  try {
+    const img = await faceapi.fetchImage(preview);
+    const detection = await faceapi
+      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (!detection) {
+      toast.error('No face detected in the uploaded photo. Please choose a clearer, front-facing photo.');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
+
+    // Wrap in an array — backend/matching expects an array of descriptors,
+    // even if upload only gives us one angle.
+    setCapturedDescriptors([Array.from(detection.descriptor)]);
+    toast.success('Face detected in uploaded photo');
+  } catch (err) {
+    toast.error('Error processing photo: ' + err.message);
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  } finally {
+    setDetecting(false);
+  }
+};
+  // const handlePhotoChange = (e) => {
+  //   const file = e.target.files[0];
+  //   if (!file) return;
+  //   setPhotoFile(file);
+  //   setPhotoPreview(URL.createObjectURL(file));
+  // };
 
   const openCreateForm = () => {
     resetForm();

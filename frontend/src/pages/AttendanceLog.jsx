@@ -338,7 +338,180 @@ export default function AttendanceLog() {
                   </tr>
                 ))}
               </tbody> */}
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-200">
+                {logs?.map((emp, empIndex) =>
+                  emp.sessions.map((s, sessionIndex) => (
+                    <tr
+                      key={s.id}
+                      className={`hover:bg-blue-50/40 transition-colors ${sessionIndex === 0 && empIndex !== 0
+                          ? "border-t-2 border-slate-300"
+                          : ""
+                        }`}
+                    >
+                      {/* Show employee details only once */}
+                      {sessionIndex === 0 && (
+                        <>
+                          <td
+                            rowSpan={emp.sessions.length}
+                            className="px-6 py-4 text-slate-400 align-top"
+                          >
+                            {(page - 1) * perPage + empIndex + 1}
+                          </td>
+
+                          <td
+                            rowSpan={emp.sessions.length}
+                            className="px-6 py-4 font-semibold text-slate-900 align-top"
+                          >
+                            {emp.name}
+                          </td>
+                        </>
+                      )}
+
+                      {/* Session Details */}
+                      <td className="px-6 py-3 text-slate-500 whitespace-nowrap">
+                        {s.in_time}
+                      </td>
+
+                      <td className="px-6 py-3 text-slate-500 whitespace-nowrap">
+                        {s.out_time ?? (
+                          <span className="text-amber-500 text-xs font-semibold">
+                            On Duty
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-3">
+                        <Badge
+                          status={
+                            s.status === "checked-out"
+                              ? "Duty Over"
+                              : "Duty In"
+                          }
+                        />
+                      </td>
+
+                      <td className="px-6 py-3">
+                        {!s.out_time && (
+                          <Button
+                            size="sm"
+                            variant="checkOut"
+                            className="cursor-pointer"
+                            onClick={() =>
+                              handleCheckOutClick({
+                                employee_id: emp.employee_id,
+                                name: emp.name,
+                              })
+                            }
+                          >
+                            Check Out
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {/* <tbody className="divide-y divide-slate-200">
+                {logs?.map((emp, i) => (
+                  <tr
+                    key={emp.employee_id}
+                    className="hover:bg-blue-50/40 align-top"
+                  >
+                    <td className="px-6 py-3 text-slate-400">
+                      {(page - 1) * perPage + i + 1}
+                    </td>
+
+                    <td className="px-6 py-3 font-semibold text-slate-900">
+                      {emp.name}
+                    </td>
+
+                   
+                    <td className="px-6 py-3 text-slate-500">
+                      {emp.sessions.map((s, index) => (
+                        <div
+                          key={s.id}
+                          className={`py-2 ${index !== emp.sessions.length - 1
+                              ? "border-b border-slate-300"
+                              : ""
+                            }`}
+                        >
+                          {s.in_time}
+                        </div>
+                      ))}
+                    </td>
+
+                 
+                    <td className="px-6 py-3 text-slate-500">
+                      {emp.sessions.map((s, index) => (
+                        <div
+                          key={s.id}
+                          className={`py-2 ${index !== emp.sessions.length - 1
+                              ? "border-b border-slate-300"
+                              : ""
+                            }`}
+                        >
+                          {s.out_time ?? (
+                            <span className="text-amber-500 text-xs font-medium">
+                              On Duty
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </td>
+
+                    
+                    <td className="px-6 py-3">
+                      {emp.sessions.map((s, index) => (
+                        <div
+                          key={s.id}
+                          className={`py-2 ${index !== emp.sessions.length - 1
+                              ? "border-b border-slate-300"
+                              : ""
+                            }`}
+                        >
+                          <Badge
+                            status={
+                              s.status === "checked-out"
+                                ? "Duty Over"
+                                : "Duty In"
+                            }
+                          />
+                        </div>
+                      ))}
+                    </td>
+
+                  
+                    <td className="px-6 py-3">
+                      {emp.sessions.map((s, index) => (
+                        <div
+                          key={s.id}
+                          className={`py-2 ${index !== emp.sessions.length - 1
+                              ? "border-b border-slate-300"
+                              : ""
+                            }`}
+                        >
+                          {!s.out_time && (
+                            <Button
+                              size="sm"
+                              variant="checkOut"
+                              className="cursor-pointer"
+                              onClick={() =>
+                                handleCheckOutClick({
+                                  employee_id: emp.employee_id,
+                                  name: emp.name,
+                                })
+                              }
+                            >
+                              Check Out
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody> */}
+              {/* <tbody className="divide-y divide-slate-50">
                 {logs?.map((emp, i) => (
                   <tr key={emp.employee_id} className="hover:bg-blue-50/40 align-top">
                     <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
@@ -388,7 +561,7 @@ export default function AttendanceLog() {
                     </td>
                   </tr>
                 ))}
-              </tbody>
+              </tbody> */}
             </table>
           </div>
 
