@@ -2,17 +2,43 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useGetPoliceStationsQuery } from '@/redux/api/policeStationApi'; // 👈 new
+import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useLoginMutation } from '@/redux/api/authApi';
-import {  User, Lock, Eye, EyeOff, LogIn, UserCheck } from 'lucide-react';
 
 export default function Login() {
-  const [form, setForm] = useState({ username: '', password: '' });
+  // const [form, setForm] = useState({ username: '', password: '' });
+  // const [error, setError] = useState('');
+  // const [showPassword, setShowPassword] = useState(false);
+  // const dispatch = useDispatch();
+  // const navigate = useNavigate();
+  // const { isAuthenticated } = useSelector((state) => state.auth);
+  // const [login, { isLoading: isLoginLoading }] = useLoginMutation();
+
+  // useEffect(() => {
+  //   if (isAuthenticated) navigate('/dashboard', { replace: true });
+  // }, [isAuthenticated, navigate]);
+
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setError('');
+  //   try {
+  //     await login({ username: form.username, password: form.password }).unwrap();
+  //     toast.success('Login successful');
+  //     window.location.href = '/scan';
+  //   } catch (err) {
+  //     setError(err?.data?.message || 'Login failed');
+  //   }
+  // };
+  const [form, setForm] = useState({ username: '', password: '', police_station_id: '' }); // 👈 added
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated } = useSelector((state) => state.auth);
   const [login, { isLoading: isLoginLoading }] = useLoginMutation();
+  const { data: stationsData } = useGetPoliceStationsQuery(); // 👈 new
+  const stations = stationsData?.stations ?? [];
 
   useEffect(() => {
     if (isAuthenticated) navigate('/dashboard', { replace: true });
@@ -22,13 +48,18 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-      await login({ username: form.username, password: form.password }).unwrap();
+      await login({
+        username: form.username,
+        password: form.password,
+        police_station_id: form.police_station_id, // 👈 sent along
+      }).unwrap();
       toast.success('Login successful');
       window.location.href = '/scan';
     } catch (err) {
       setError(err?.data?.message || 'Login failed');
     }
   };
+
 
   return (
     <>
@@ -367,9 +398,7 @@ export default function Login() {
 }
       `}</style>
 
-      <div className="l-root">
-
-        {/* LEFT */}
+     <div className="l-root">
         <div className="l-left">
           <img src="/images/bg.jpg" alt="" className="l-bg" />
           <div className="l-overlay" />
@@ -382,19 +411,11 @@ export default function Login() {
           </div>
         </div>
 
-        {/* RIGHT */}
         <div className="l-right">
           <div className="l-card">
-
-            {/* <div className="l-logo">
-              <ShieldCheck size={32} strokeWidth={1.8} />
-            </div> */}
-     <div className="l-logo">
-  <i
-    className="fa-solid fa-user-check"
-    style={{ fontSize: "26px" }}
-  ></i>
-</div>
+            <div className="l-logo">
+              <i className="fa-solid fa-user-check" style={{ fontSize: "26px" }}></i>
+            </div>
 
             <h2 className="l-title">Police Station</h2>
             <p className="l-sub">Sign in to continue</p>
@@ -402,6 +423,32 @@ export default function Login() {
             {error && <div className="l-error">{error}</div>}
 
             <form onSubmit={handleSubmit}>
+
+              {/* 👇 NEW — Police Station dropdown, placed first */}
+              <div className="l-field">
+                <label>POLICE STATION</label>
+                <select
+                  value={form.police_station_id}
+                  onChange={(e) => setForm({ ...form, police_station_id: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    height: '50px',
+                    border: '1px solid #d6dbe4',
+                    borderRadius: '12px',
+                    padding: '0 14px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    color: '#1e293b',
+                    background: '#fff',
+                  }}
+                >
+                  <option value="">Select Police Station</option>
+                  {stations.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="l-field">
                 <label>USERNAME</label>
@@ -430,44 +477,169 @@ export default function Login() {
                     required
                     autoComplete="current-password"
                   />
-                  <button
-                    type="button"
-                    className="l-eye"
-                    onClick={() => setShowPassword((p) => !p)}
-                    tabIndex={-1}
-                  >
+                  <button type="button" className="l-eye" onClick={() => setShowPassword((p) => !p)} tabIndex={-1}>
                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
 
               <label className="l-check">
-                <input
-                  type="checkbox"
-                  checked={showPassword}
-                  onChange={(e) => setShowPassword(e.target.checked)}
-                />
+                <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
                 Show Password
               </label>
 
               <button type="submit" className="l-btn" disabled={isLoginLoading}>
-                {isLoginLoading
-                  ? <span className="l-spinner" />
-                  : <><LogIn size={16} /> LOGIN</>
-                }
+                {isLoginLoading ? <span className="l-spinner" /> : <><LogIn size={16} /> LOGIN</>}
               </button>
-
             </form>
 
             <div className="l-footer">
               Designed &amp; Developed by <span>Techpromind</span><br />
               Support : +91 99036 34360
             </div>
-
           </div>
         </div>
-
       </div>
     </>
   );
 }
+
+// import { useState, useEffect } from 'react';
+// import { useDispatch, useSelector } from 'react-redux';
+// import { useNavigate } from 'react-router-dom';
+// import toast from 'react-hot-toast';
+// import { useLoginMutation } from '@/redux/api/authApi';
+// import { useGetPoliceStationsQuery } from '@/redux/api/policeStationApi'; // 👈 new
+// import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+
+// export default function Login() {
+//   const [form, setForm] = useState({ username: '', password: '', police_station_id: '' }); // 👈 added
+//   const [error, setError] = useState('');
+//   const [showPassword, setShowPassword] = useState(false);
+//   const dispatch = useDispatch();
+//   const navigate = useNavigate();
+//   const { isAuthenticated } = useSelector((state) => state.auth);
+//   const [login, { isLoading: isLoginLoading }] = useLoginMutation();
+//   const { data: stationsData } = useGetPoliceStationsQuery(); // 👈 new
+//   const stations = stationsData?.stations ?? [];
+
+//   useEffect(() => {
+//     if (isAuthenticated) navigate('/dashboard', { replace: true });
+//   }, [isAuthenticated, navigate]);
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setError('');
+//     try {
+//       await login({
+//         username: form.username,
+//         password: form.password,
+//         police_station_id: form.police_station_id, // 👈 sent along
+//       }).unwrap();
+//       toast.success('Login successful');
+//       window.location.href = '/scan';
+//     } catch (err) {
+//       setError(err?.data?.message || 'Login failed');
+//     }
+//   };
+
+//   // ...styles unchanged...
+
+//   return (
+//     <>
+//       {/* styles unchanged */}
+//       <div className="l-root">
+//         <div className="l-left">{/* unchanged */}</div>
+
+//         <div className="l-right">
+//           <div className="l-card">
+//             <div className="l-logo">
+//               <i className="fa-solid fa-user-check" style={{ fontSize: "26px" }}></i>
+//             </div>
+
+//             <h2 className="l-title">Police Station</h2>
+//             <p className="l-sub">Sign in to continue</p>
+
+//             {error && <div className="l-error">{error}</div>}
+
+//             <form onSubmit={handleSubmit}>
+
+//               {/* 👇 NEW — Police Station dropdown, placed first */}
+//               <div className="l-field">
+//                 <label>POLICE STATION</label>
+//                 <select
+//                   value={form.police_station_id}
+//                   onChange={(e) => setForm({ ...form, police_station_id: e.target.value })}
+//                   required
+//                   style={{
+//                     width: '100%',
+//                     height: '50px',
+//                     border: '1px solid #d6dbe4',
+//                     borderRadius: '12px',
+//                     padding: '0 14px',
+//                     fontSize: '14px',
+//                     outline: 'none',
+//                     color: '#1e293b',
+//                     background: '#fff',
+//                   }}
+//                 >
+//                   <option value="">Select Police Station</option>
+//                   {stations.map((s) => (
+//                     <option key={s.id} value={s.id}>{s.name}</option>
+//                   ))}
+//                 </select>
+//               </div>
+
+//               <div className="l-field">
+//                 <label>USERNAME</label>
+//                 <div className="l-input-wrap">
+//                   <span className="l-icon"><User size={15} /></span>
+//                   <input
+//                     type="text"
+//                     placeholder="Enter Username"
+//                     value={form.username}
+//                     onChange={(e) => setForm({ ...form, username: e.target.value })}
+//                     required
+//                     autoComplete="username"
+//                   />
+//                 </div>
+//               </div>
+
+//               <div className="l-field">
+//                 <label>PASSWORD</label>
+//                 <div className="l-input-wrap">
+//                   <span className="l-icon"><Lock size={15} /></span>
+//                   <input
+//                     type={showPassword ? 'text' : 'password'}
+//                     placeholder="Enter Password"
+//                     value={form.password}
+//                     onChange={(e) => setForm({ ...form, password: e.target.value })}
+//                     required
+//                     autoComplete="current-password"
+//                   />
+//                   <button type="button" className="l-eye" onClick={() => setShowPassword((p) => !p)} tabIndex={-1}>
+//                     {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+//                   </button>
+//                 </div>
+//               </div>
+
+//               <label className="l-check">
+//                 <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+//                 Show Password
+//               </label>
+
+//               <button type="submit" className="l-btn" disabled={isLoginLoading}>
+//                 {isLoginLoading ? <span className="l-spinner" /> : <><LogIn size={16} /> LOGIN</>}
+//               </button>
+//             </form>
+
+//             <div className="l-footer">
+//               Designed &amp; Developed by <span>Techpromind</span><br />
+//               Support : +91 99036 34360
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </>
+//   );
+// }

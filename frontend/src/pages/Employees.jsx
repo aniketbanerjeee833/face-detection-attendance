@@ -13,6 +13,7 @@ import {
   useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
 } from '../redux/api/employeeApi';
+import { useGetPoliceStationsQuery } from '@/redux/api/policeStationApi';
 
 export default function Employees() {
   const [showForm, setShowForm] = useState(false);
@@ -22,7 +23,8 @@ export default function Employees() {
     phone_number: '',
     address: '',
     aadhar_number: '',
-    place_of_posting: '',
+    police_station_id: '', // ← new field
+
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -81,7 +83,8 @@ export default function Employees() {
   const employees = data?.employees ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
   const totalPages = pagination.totalPages || 1;
-
+  const { data: stationsData } = useGetPoliceStationsQuery();
+  const policeStations = stationsData?.stations ?? [];
   // ── Camera helpers ───────────────────────────────────────────────────
   // const startCamera = async () => {
   //   try {
@@ -232,9 +235,10 @@ export default function Employees() {
     let representativePhoto = null;
 
     for (let i = 0; i < CAPTURE_PROMPTS.length; i++) {
-      setCaptureProgress({ step: i + 1, total: CAPTURE_PROMPTS.length, 
+      setCaptureProgress({
+        step: i + 1, total: CAPTURE_PROMPTS.length,
         // prompt: CAPTURE_PROMPTS[i] 
-      
+
       });
       await new Promise((res) => setTimeout(res, 400)); // give the person a moment to adjust pose
 
@@ -295,47 +299,47 @@ export default function Employees() {
   // };
 
   const handlePhotoChange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-  if (!modelsLoaded) {
-    toast.error('Face recognition models still loading, please wait a moment');
-    e.target.value = ''; // reset the file input so they can retry once models are ready
-    return;
-  }
-
-  const preview = URL.createObjectURL(file);
-  setPhotoFile(file);
-  setPhotoPreview(preview);
-  setCapturedDescriptors(null); // clear any previous capture while we process this one
-
-  setDetecting(true);
-  try {
-    const img = await faceapi.fetchImage(preview);
-    const detection = await faceapi
-      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-
-    if (!detection) {
-      toast.error('No face detected in the uploaded photo. Please choose a clearer, front-facing photo.');
-      setPhotoFile(null);
-      setPhotoPreview(null);
+    if (!modelsLoaded) {
+      toast.error('Face recognition models still loading, please wait a moment');
+      e.target.value = ''; // reset the file input so they can retry once models are ready
       return;
     }
 
-    // Wrap in an array — backend/matching expects an array of descriptors,
-    // even if upload only gives us one angle.
-    setCapturedDescriptors([Array.from(detection.descriptor)]);
-    toast.success('Face detected in uploaded photo');
-  } catch (err) {
-    toast.error('Error processing photo: ' + err.message);
-    setPhotoFile(null);
-    setPhotoPreview(null);
-  } finally {
-    setDetecting(false);
-  }
-};
+    const preview = URL.createObjectURL(file);
+    setPhotoFile(file);
+    setPhotoPreview(preview);
+    setCapturedDescriptors(null); // clear any previous capture while we process this one
+
+    setDetecting(true);
+    try {
+      const img = await faceapi.fetchImage(preview);
+      const detection = await faceapi
+        .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        toast.error('No face detected in the uploaded photo. Please choose a clearer, front-facing photo.');
+        setPhotoFile(null);
+        setPhotoPreview(null);
+        return;
+      }
+
+      // Wrap in an array — backend/matching expects an array of descriptors,
+      // even if upload only gives us one angle.
+      setCapturedDescriptors([Array.from(detection.descriptor)]);
+      toast.success('Face detected in uploaded photo');
+    } catch (err) {
+      toast.error('Error processing photo: ' + err.message);
+      setPhotoFile(null);
+      setPhotoPreview(null);
+    } finally {
+      setDetecting(false);
+    }
+  };
   // const handlePhotoChange = (e) => {
   //   const file = e.target.files[0];
   //   if (!file) return;
@@ -355,7 +359,8 @@ export default function Employees() {
       phone_number: emp.phone_number || '',
       address: emp.address || '',
       aadhar_number: emp.aadhar_number || '',
-      place_of_posting: emp.place_of_posting || '',
+      police_station_id: '', // ← new field
+
     });
     setPhotoFile(null);
     setPhotoPreview(emp.photo_url ? `http://localhost:5000${emp.photo_url}` : null);
@@ -438,13 +443,18 @@ export default function Employees() {
   //     toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
   //   }
   // };
-const handleSubmit = async (e) => {
+  
+  const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (!/^\d{10}$/.test(form.phone_number)) return toast.error('Phone number must be exactly 10 digits');
   if (!/^\d{12}$/.test(form.aadhar_number)) return toast.error('Aadhar number must be exactly 12 digits');
 
   const isEdit = !!editingId;
+
+  if (!isEdit && !form.police_station_id) {
+    return toast.error('Please select a police station');
+  }
   if (!isEdit && !photoFile) return toast.error('Please capture a photo');
   if (!isEdit && !capturedDescriptors) return toast.error('Please complete the multi-angle face capture');
 
@@ -453,7 +463,9 @@ const handleSubmit = async (e) => {
   fd.append('phone_number', form.phone_number);
   fd.append('address', form.address);
   fd.append('aadhar_number', form.aadhar_number);
-  fd.append('place_of_posting', form.place_of_posting);
+  if (!isEdit) {
+    fd.append('police_station_id', form.police_station_id); // only sent on create
+  }
   if (photoFile) fd.append('photo', photoFile);
   if (capturedDescriptors) fd.append('descriptors', JSON.stringify(capturedDescriptors));
 
@@ -472,6 +484,40 @@ const handleSubmit = async (e) => {
     toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
   }
 };
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   if (!/^\d{10}$/.test(form.phone_number)) return toast.error('Phone number must be exactly 10 digits');
+  //   if (!/^\d{12}$/.test(form.aadhar_number)) return toast.error('Aadhar number must be exactly 12 digits');
+
+  //   const isEdit = !!editingId;
+  //   if (!isEdit && !photoFile) return toast.error('Please capture a photo');
+  //   if (!isEdit && !capturedDescriptors) return toast.error('Please complete the multi-angle face capture');
+
+  //   const fd = new FormData();
+  //   fd.append('name', form.name);
+  //   fd.append('phone_number', form.phone_number);
+  //   fd.append('address', form.address);
+  //   fd.append('aadhar_number', form.aadhar_number);
+  //   // fd.append('place_of_posting', form.place_of_posting);
+  //   if (photoFile) fd.append('photo', photoFile);
+  //   if (capturedDescriptors) fd.append('descriptors', JSON.stringify(capturedDescriptors));
+
+  //   try {
+  //     if (isEdit) {
+  //       await updateEmployee({ id: editingId, formData: fd }).unwrap();
+  //       toast.success('Employee updated successfully');
+  //     } else {
+  //       await createEmployee(fd).unwrap();
+  //       toast.success('Employee created and face registered successfully');
+  //       updateParams({ page: 1 });
+  //     }
+  //     setShowForm(false);
+  //     resetForm();
+  //   } catch (err) {
+  //     toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
+  //   }
+  // };
   const handleDelete = async (id) => {
     if (!confirm('Delete this employee?')) return;
     try {
@@ -483,9 +529,10 @@ const handleSubmit = async (e) => {
       alert(err?.data?.message || 'Error deleting employee');
     }
   };
-  
-const resetForm = () => {
-  setForm({ name: '', phone_number: '', address: '', aadhar_number: '', place_of_posting: '' });
+
+ 
+  const resetForm = () => {
+  setForm({ name: '', phone_number: '', address: '', aadhar_number: '', police_station_id: '' });
   setPhotoFile(null);
   setPhotoPreview(null);
   setCapturedDescriptors(null);
@@ -605,7 +652,27 @@ const resetForm = () => {
                       className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
                     />
                   </div>
-                  <div>
+                  {!editingId && (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-500">Police Station *</label>
+                      <Select
+                        value={form.police_station_id ? String(form.police_station_id) : ''}
+                        onValueChange={(v) => setForm({ ...form, police_station_id: v })}
+                      >
+                        <SelectTrigger className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm h-auto">
+                          <SelectValue placeholder="Select police station" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {policeStations.map((station) => (
+                            <SelectItem key={station.id} value={String(station.id)}>
+                              {station.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {/* <div>
                     <label className="mb-1.5 block text-xs font-semibold text-slate-500">Place of Posting *</label>
                     <input
                       value={form.place_of_posting}
@@ -613,7 +680,7 @@ const resetForm = () => {
                       required
                       className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
                     />
-                  </div>
+                  </div> */}
                   <div className="sm:col-span-2">
                     <label className="mb-1.5 block text-xs font-semibold text-slate-500">Address *</label>
                     <textarea
@@ -790,7 +857,9 @@ const resetForm = () => {
                 <th className="px-6 py-3 font-medium">Photo</th>
                 <th className="px-6 py-3 font-medium">Name</th>
                 <th className="px-6 py-3 font-medium">Phone</th>
-                <th className="px-6 py-3 font-medium">Place of Posting</th>
+                <th className="px-6 py-3 font-medium">Police Station</th>
+
+                {/* <th className="px-6 py-3 font-medium">Place of Posting</th> */}
                 <th className="px-6 py-3 font-medium">Face</th>
                 <th className="px-6 py-3 font-medium">Actions</th>
               </tr>
@@ -814,7 +883,9 @@ const resetForm = () => {
                   </td>
                   <td className="px-6 py-3 font-medium text-slate-900">{emp.name}</td>
                   <td className="px-6 py-3 text-slate-500">{emp.phone_number}</td>
-                  <td className="px-6 py-3 text-slate-500">{emp.place_of_posting}</td>
+
+                  <td className="px-6 py-3 text-slate-500">{emp.police_station_name}</td>
+                  {/* <td className="px-6 py-3 text-slate-500">{emp.place_of_posting}</td> */}
                   <td className="px-6 py-3">
                     {emp.face_descriptor
                       ? <span className="text-xs font-semibold text-green-600">✓ Registered</span>

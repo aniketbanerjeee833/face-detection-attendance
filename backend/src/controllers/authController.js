@@ -226,31 +226,85 @@ const isProduction = false;
 const cookieName = (role) =>
   role === 'superadmin' ? 'superadmin_session_id' : 'admin_session_id';
 
+//OLD
+// const loginCore = async (req, res, requiredRole) => {
+//   const { username, password } = req.body;
+//   if (!username || !password) {
+//     return res.status(400).json({ success: false, message: 'Username and password are required' });
+//   }
+
+//   try {
+//     const [rows] = await db.execute('SELECT * FROM admins WHERE username = ?', [username]);
+//     if (!rows.length)
+//       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+
+//     const account = rows[0];
+//     console.log(`Login attempt for ${username} with role ${account.role}`);
+//     const match = await bcrypt.compare(password, account.password);
+//      if (!match || account.role !== requiredRole) {
+//       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+//     // if (!match)
+//     //   return res.status(401).json({ success: false, message: 'Invalid password' });
+//     // console.log(requiredRole, account.role);
+//     // if (account.role !== requiredRole)
+//     //   return res.status(403).json({
+//     //     success: false,
+//     //     message: `This account does not have access to the ${requiredRole} portal`,
+//     //   });
+
+//     const sessionId = crypto.randomBytes(32).toString('hex');
+//     await db.execute(
+//       `INSERT INTO admin_sessions (session_id, admin_id, created_at, expires_at)
+//        VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY))`,
+//       [sessionId, account.id]
+//     );
+
+//     // ✅ Role-specific cookie name
+//     res.cookie(cookieName(requiredRole), sessionId, {
+//       httpOnly: true,
+//       secure: isProduction,
+//       sameSite: 'Lax',
+//       path: '/',
+//       maxAge: 24 * 60 * 60 * 1000,
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Login successful',
+//       admin: {
+//         id: account.id,
+//         name: account.name,
+//         username: account.username,
+//         role: account.role,
+//       },
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+//   }
+// };
+// authController.js — loginCore updated
 const loginCore = async (req, res, requiredRole) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and password are required' });
+  const { username, password, police_station_id } = req.body;
+
+  if (!username || !password || !police_station_id) {
+    return res.status(400).json({ success: false, message: 'Username, password, and police station are required' });
   }
 
   try {
-    const [rows] = await db.execute('SELECT * FROM admins WHERE username = ?', [username]);
+    const [rows] = await db.execute(
+      'SELECT * FROM admins WHERE username = ? AND police_station_id = ?',
+      [username, police_station_id]
+    );
     if (!rows.length)
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     const account = rows[0];
-    console.log(`Login attempt for ${username} with role ${account.role}`);
     const match = await bcrypt.compare(password, account.password);
-     if (!match || account.role !== requiredRole) {
+    if (!match || account.role !== requiredRole) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
-    // if (!match)
-    //   return res.status(401).json({ success: false, message: 'Invalid password' });
-    // console.log(requiredRole, account.role);
-    // if (account.role !== requiredRole)
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: `This account does not have access to the ${requiredRole} portal`,
-    //   });
 
     const sessionId = crypto.randomBytes(32).toString('hex');
     await db.execute(
@@ -259,13 +313,8 @@ const loginCore = async (req, res, requiredRole) => {
       [sessionId, account.id]
     );
 
-    // ✅ Role-specific cookie name
     res.cookie(cookieName(requiredRole), sessionId, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'Lax',
-      path: '/',
-      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true, secure: isProduction, sameSite: 'Lax', path: '/', maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
@@ -276,6 +325,7 @@ const loginCore = async (req, res, requiredRole) => {
         name: account.name,
         username: account.username,
         role: account.role,
+        police_station_id: account.police_station_id,
       },
     });
   } catch (err) {
@@ -283,7 +333,6 @@ const loginCore = async (req, res, requiredRole) => {
     return res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
-
 const loginAdmin = asyncHandler((req, res) => loginCore(req, res, 'admin'));
 const loginSuperAdmin = asyncHandler((req, res) => loginCore(req, res, 'superadmin'));
 
@@ -336,12 +385,13 @@ const logoutSuperAdmin = asyncHandler(async (req, res) => {
 //   }
 // });
 // authController.js
+
 const getMeAdmin = asyncHandler(async (req, res) => {
   const sessionId = req.cookies.admin_session_id;
   if (!sessionId) return res.json({ authenticated: false, user: null });
 
   const [rows] = await db.execute(
-    `SELECT us.admin_id, u.id, u.name, u.username, u.role
+    `SELECT us.admin_id, u.id, u.name, u.username, u.role, u.police_station_id
      FROM admin_sessions us
      JOIN admins u ON us.admin_id = u.id
      WHERE us.session_id = ? AND us.expires_at > NOW() AND u.role = 'admin'`,
@@ -350,6 +400,20 @@ const getMeAdmin = asyncHandler(async (req, res) => {
   if (!rows.length) return res.json({ authenticated: false, user: null });
   return res.json({ authenticated: true, success: true, user: rows[0] });
 });
+// const getMeAdmin = asyncHandler(async (req, res) => {
+//   const sessionId = req.cookies.admin_session_id;
+//   if (!sessionId) return res.json({ authenticated: false, user: null });
+
+//   const [rows] = await db.execute(
+//     `SELECT us.admin_id, u.id, u.name, u.username, u.role
+//      FROM admin_sessions us
+//      JOIN admins u ON us.admin_id = u.id
+//      WHERE us.session_id = ? AND us.expires_at > NOW() AND u.role = 'admin'`,
+//     [sessionId]
+//   );
+//   if (!rows.length) return res.json({ authenticated: false, user: null });
+//   return res.json({ authenticated: true, success: true, user: rows[0] });
+// });
 
 const getMeSuperAdmin = asyncHandler(async (req, res) => {
   const sessionId = req.cookies.superadmin_session_id;

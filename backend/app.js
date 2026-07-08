@@ -6,6 +6,8 @@ import path from 'path';
 import authRoutes from './src/routes/authRoutes.js';
 import employeeRoutes from './src/routes/employeeRoutes.js';
 import attendanceRoutes from './src/routes/attendanceRoutes.js';
+
+import policeStationRoutes from './src/routes/policeStationRoutes.js';
 import { fileURLToPath } from 'url';
 import { errorHandler, notFound } from './src/middleware/errorHandler.js';
 import cookieParser from "cookie-parser";
@@ -46,6 +48,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/attendance', attendanceRoutes);
+
+app.use('/api/police-stations', policeStationRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));
 app.use(notFound);       // 404 for unknown routes

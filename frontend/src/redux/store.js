@@ -5,6 +5,7 @@ import authReducer         from './slices/authSlice';
 import { authApi }         from './api/authApi';
 import { employeeApi }     from './api/employeeApi';
 import { attendanceApi }   from './api/attendanceApi';
+import { policeStationApi } from './api/policeStationApi';
 
 // ── Storage (fixes Vite ESM incompatibility with redux-persist/lib/storage) ──
 const storage = {
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   [authApi.reducerPath]:       authApi.reducer,
   [employeeApi.reducerPath]:   employeeApi.reducer,
   [attendanceApi.reducerPath]: attendanceApi.reducer,
+  [policeStationApi.reducerPath]: policeStationApi.reducer,
 });
 
 // ── Persist only the auth slice ───────────────────────────────────────────────
@@ -40,6 +42,7 @@ const store = configureStore({
       authApi.middleware,
       employeeApi.middleware,
       attendanceApi.middleware,
+      policeStationApi.middleware
     ),
 });
 

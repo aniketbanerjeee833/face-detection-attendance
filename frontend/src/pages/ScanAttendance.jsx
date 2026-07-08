@@ -683,6 +683,35 @@ if (!match) {
   });
   return;
 }
+       
+try {
+  const data = await markAttendance({
+    employee_id: match.employee.id,
+    confidence: match.confidence,
+  }).unwrap();
+
+  setResult({
+    type: 'success',
+    scanType: data.type,
+    employee: match.employee,
+    confidence: match.confidence,
+    returnTo,
+  });
+} catch (err) {
+  const payload = err?.data;
+
+  // ✅ Already marked today — show success, not fail
+  if (payload?.type === 'already-marked') {
+    setResult({
+      type: 'already-marked',
+      employee: payload.employee,      // has .name from backend
+      message: payload.message,
+    });
+    return;
+  }
+
+  setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
+}
         // try {
         //   const data = await markAttendance({
         //     employee_id: match.employee.id,
@@ -691,45 +720,18 @@ if (!match) {
 
         //   setResult({
         //     type: 'success',
-        //     scanType: data.type, // 'in' or 'out'
+        //     scanType: data.type, // always 'in' or 'out' now
         //     employee: match.employee,
         //     confidence: match.confidence,
         //     returnTo,
         //   });
         // } 
-
         // catch (err) {
         //   const payload = err?.data;
-        //   if (payload?.type === 'done') {
-        //     setResult({
-        //       type: 'success',
-        //       scanType: 'done',
-        //       employee: match.employee,
-        //       confidence: match.confidence,
-        //       returnTo,
-        //     });
-        //   } else {
-        //     setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
-        //   }
+        //   console.log('Attendance marking error:', payload);
+        //   setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
         // }
-
-        try {
-          const data = await markAttendance({
-            employee_id: match.employee.id,
-            confidence: match.confidence,
-          }).unwrap();
-
-          setResult({
-            type: 'success',
-            scanType: data.type, // always 'in' or 'out' now
-            employee: match.employee,
-            confidence: match.confidence,
-            returnTo,
-          });
-        } catch (err) {
-          const payload = err?.data;
-          setResult({ type: 'fail', message: payload?.message || 'Something went wrong' });
-        }
+        
       } catch (err) {
         console.error('Detection error:', err);
         clearInterval(intervalRef.current);

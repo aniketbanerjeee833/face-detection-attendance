@@ -8,7 +8,7 @@ import { getAllEmployees, getEmployee, createEmployee,
     saveFaceDescriptor, deleteEmployee, 
     updateEmployee,
     getAllEmployeesSuperAdmin,
-    getAllAdmins,
+    
     getAllEmployeesForMatching,
     getEmployeeByAadhar} from '../controllers/employeeController.js';
 // import userAuth from '../middleware/userAuth.js';
@@ -45,6 +45,6 @@ router.get('/match/all', adminUserAuth, adminAuth, getAllEmployeesForMatching);
 // employeeRoutes.js
 router.get('/aadhar/:aadhar', adminUserAuth, adminAuth, getEmployeeByAadhar);
 router.get('/superadmin/all', superAdminUserAuth, superAdminAuth, getAllEmployeesSuperAdmin);
-router.get('/superadmin/admins', superAdminUserAuth, superAdminAuth, getAllAdmins);
+//router.get('/superadmin/admins', superAdminUserAuth, superAdminAuth, getAllAdmins);
 
 export default router;

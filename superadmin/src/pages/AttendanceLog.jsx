@@ -172,20 +172,22 @@ import Spinner from '../components/ui/Spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Button from '@/components/ui/Button';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { downloadAttendanceReport } from '@/utils/downloadAttendanceReport';
+import { FileSpreadsheet } from 'lucide-react';
 
 
 export default function AttendanceLog() {
   const formatDisplayDate = (isoDate) => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
-}
+    const [y, m, d] = isoDate.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
   const navigate = useNavigate();
- 
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { admin } = useSelector((s) => s.auth);
@@ -268,9 +270,27 @@ export default function AttendanceLog() {
   const pagination = data?.pagination ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
   const totalPages = pagination.totalPages || 1;
 
+  const [downloading, setDownloading] = useState(false);
+
+const handleDownload = async () => {
+  setDownloading(true);
+  try {
+    await downloadAttendanceReport({
+      isSuperAdmin,
+      date: filterDate,
+      search,
+      adminId: adminIdFilter,
+    });
+  } catch (err) {
+   toast.error('Failed to download report, please try again.');
+  } finally {
+    setDownloading(false);
+  }
+};
+
   return (
     <div className="space-y-6">
-        <div>
+      <div>
         <h2 className="text-lg font-bold text-slate-900">Attendance Log</h2>
         <p className="text-xs text-indigo-500">{formatDisplayDate(filterDate)}</p>
       </div>
@@ -279,7 +299,7 @@ export default function AttendanceLog() {
         <input
           type="date"
           value={filterDate}
-          
+
           onChange={handleDateChange}
           className="rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
         />
@@ -309,10 +329,27 @@ export default function AttendanceLog() {
           />
         </div>
 
-        <span className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+        {/* <span className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
           {isFetching ? 'Loading...' : `${logs.length} records`}
-        </span>
+        </span> */}
+        <div className="ml-auto flex items-center gap-2">
+  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+    {isFetching ? 'Loading...' : `${logs.length} records`}
+  </span>
+
+  <button
+    onClick={handleDownload}
+    disabled={downloading}
+    title="Download as Excel"
+    className="group flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 ring-1 ring-green-200 transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    <FileSpreadsheet size={14} className="text-green-600" />
+    {downloading ? 'Preparing...' : 'Export'}
+  </button>
+</div>
+        
       </div>
+     
 
       {isLoading ? (
         <Spinner text="Loading logs..." />
@@ -358,41 +395,41 @@ export default function AttendanceLog() {
                 ))}
               </tbody> */}
               <tbody className="divide-y divide-slate-50">
-  {logs?.map((emp, i) => (
-    <tr key={emp.employee_id} className="hover:bg-blue-50/40 align-top">
-      <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
-      <td className="px-6 py-3 font-semibold text-slate-900">{emp.name}</td>
-      {isSuperAdmin && (
-        <td className="px-6 py-3 text-slate-500">{emp.admin_name}</td>
-      )}
-      <td className="px-6 py-3 text-slate-500">
-        <div className="space-y-1.5">
-          {emp.sessions.map((s) => (
-            <div key={s.id}>{s.in_time}</div>
-          ))}
-        </div>
-      </td>
-      <td className="px-6 py-3 text-slate-500">
-        <div className="space-y-1.5">
-          {emp.sessions.map((s) => (
-            <div key={s.id}>
-              {s.out_time ?? <span className="text-amber-500 text-xs font-medium">On Duty</span>}
-            </div>
-          ))}
-        </div>
-      </td>
-      <td className="px-6 py-3">
-        <div className="space-y-1.5">
-          {emp.sessions.map((s) => (
-            <div key={s.id}>
-              <Badge status={s.status === "checked-out" ? "Duty Over" : "Duty In"} />
-            </div>
-          ))}
-        </div>
-      </td>
-    </tr>
-  ))}
-</tbody>
+                {logs?.map((emp, i) => (
+                  <tr key={emp.employee_id} className="hover:bg-blue-50/40 align-top">
+                    <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
+                    <td className="px-6 py-3 font-semibold text-slate-900">{emp.name}</td>
+                    {isSuperAdmin && (
+                      <td className="px-6 py-3 text-slate-500">{emp.admin_name}</td>
+                    )}
+                    <td className="px-6 py-3 text-slate-500">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>{s.in_time}</div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 text-slate-500">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>
+                            {s.out_time ?? <span className="text-amber-500 text-xs font-medium">On Duty</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="space-y-1.5">
+                        {emp.sessions.map((s) => (
+                          <div key={s.id}>
+                            <Badge status={s.status === "checked-out" ? "Duty Over" : "Duty In"} />
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
           {logs?.length > 0 && (
