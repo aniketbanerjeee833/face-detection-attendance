@@ -302,7 +302,7 @@ export default function Employees() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-slate-900">
           {isSuperAdmin
-            ? `All Employees${selectedStation ? ` — ${selectedStation.name}` : ' (All Stations)'}`
+            ? `All Employees${selectedStation ? ` — Police ${selectedStation.name}` : ' (All Police Stations)'}`
             : 'Employees'}
         </h2>
 

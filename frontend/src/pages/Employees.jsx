@@ -18,6 +18,7 @@ import { useGetPoliceStationsQuery } from '@/redux/api/policeStationApi';
 export default function Employees() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null); // null = create mode, id = edit mode
+  const formRef = useRef(null);
   const [form, setForm] = useState({
     name: '',
     phone_number: '',
@@ -352,21 +353,46 @@ export default function Employees() {
     setShowForm(true);
   };
 
-  const openEditForm = (emp) => {
-    setEditingId(emp.id);
-    setForm({
-      name: emp.name || '',
-      phone_number: emp.phone_number || '',
-      address: emp.address || '',
-      aadhar_number: emp.aadhar_number || '',
-      police_station_id: '', // ← new field
+  // const openEditForm = (emp) => {
+  //   setEditingId(emp.id);
+  //   setForm({
+  //     name: emp.name || '',
+  //     phone_number: emp.phone_number || '',
+  //     address: emp.address || '',
+  //     aadhar_number: emp.aadhar_number || '',
+  //     police_station_id: '', // ← new field
 
+  //   });
+  //   setPhotoFile(null);
+  //   setPhotoPreview(emp.photo_url ? `http://localhost:5000${emp.photo_url}` : null);
+  //   setPhotoMode('upload');
+  //   setShowForm(true);
+  // };
+const openEditForm = (emp) => {
+  setEditingId(emp.id);
+
+  setForm({
+    name: emp.name || "",
+    phone_number: emp.phone_number || "",
+    address: emp.address || "",
+    aadhar_number: emp.aadhar_number || "",
+    police_station_id: "",
+  });
+
+  setPhotoFile(null);
+  setPhotoPreview(
+    emp.photo_url ? `http://localhost:5000${emp.photo_url}` : null
+  );
+  setPhotoMode("upload");
+  setShowForm(true);
+
+  setTimeout(() => {
+    formRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
     });
-    setPhotoFile(null);
-    setPhotoPreview(emp.photo_url ? `http://localhost:5000${emp.photo_url}` : null);
-    setPhotoMode('upload');
-    setShowForm(true);
-  };
+  }, 100);
+};
 
   const handleCancel = () => {
     stopCamera();
@@ -608,6 +634,7 @@ export default function Employees() {
       <AnimatePresence>
         {showForm && (
           <motion.div
+           ref={formRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

@@ -175,52 +175,75 @@ export default function ResultOverlay({ result, onReset }) {
   const navigate = useNavigate();
 
   if (!result) return null;
-    if (result.type === 'already-marked') {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-        className="mx-auto flex max-w-md flex-col items-center gap-2 rounded-3xl bg-white p-10 text-center shadow-soft"
-      >
-        <div className="grid h-16 w-16 place-items-center rounded-full bg-green-50 text-3xl">
-          ✅
-        </div>
-        <h2 className="mt-2 text-xl font-bold text-slate-900">{result.employee?.name}</h2>
-        <span className="mt-1 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-600">
-          Already  present today
-        </span>
-        {/* <Button variant="outline" className="mt-5 cursor-pointer" onClick={onReset}>
-          Scan Next Person
-        </Button> */}
-      </motion.div>
-    );
-  }
+  console.log('ResultOverlay result:', result);
+  //   if (result.type === 'already-marked') {
+  //   return (
+  //     <motion.div
+  //       initial={{ opacity: 0, scale: 0.95 }}
+  //       animate={{ opacity: 1, scale: 1 }}
+  //       transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+  //       className="mx-auto flex max-w-md flex-col items-center gap-2 rounded-3xl bg-white p-10 text-center shadow-soft"
+  //     >
+  //       <div className="grid h-16 w-16 place-items-center rounded-full bg-green-50 text-3xl">
+  //         ✅
+  //       </div>
+  //       <h2 className="mt-2 text-xl font-bold text-slate-900">{result.employee?.name}</h2>
+  //       <span className="mt-1 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-600">
+  //         Already  present today
+  //       </span>
+  //       {/* <Button variant="outline" className="mt-5 cursor-pointer" onClick={onReset}>
+  //         Scan Next Person
+  //       </Button> */}
+  //     </motion.div>
+  //   );
+  // }
 
-  const isSuccess = result.type === 'success';
-  // const alreadyMarked = result.alreadyMarked || false;
-  // scanType: 'in' | 'out' | 'done'  (set by ScanAttendance based on backend response)
-  const { scanType } = result;
+  // const isSuccess = result.type === 'success';
+  // // const alreadyMarked = result.alreadyMarked || false;
+  // // scanType: 'in' | 'out' | 'done'  (set by ScanAttendance based on backend response)
+  // const { scanType } = result;
 
-  // Auto-redirect to logs after any successful outcome (check-in, check-out, or already-done)
-  useEffect(() => {
-    if (!isSuccess) return; // only redirect on success, not on failed match
+  // // Auto-redirect to logs after any successful outcome (check-in, check-out, or already-done)
+  // useEffect(() => {
+  //   if (!isSuccess) return; // only redirect on success, not on failed match
 
-    const timer = setTimeout(() => {
-      navigate('/logs');
-    }, 1800); // small delay so the person sees the confirmation before redirect
+  //   const timer = setTimeout(() => {
+  //     navigate('/logs');
+  //   }, 1800); // small delay so the person sees the confirmation before redirect
 
-    return () => clearTimeout(timer);
-  }, [isSuccess, navigate]);
+  //   return () => clearTimeout(timer);
+  // }, [isSuccess, navigate]);
+  const isSuccess = result.type === "success" || result.type === "already-marked";
+   const { scanType } = result;
+useEffect(() => {
+  if (!isSuccess) return;
 
-  const messages = {
-    in:   { title: `Welcome, ${result.employee?.name}!`, badge: '✔ Check-in Recorded',  badgeClass: 'bg-success-50 text-success-600' },
-    out:  { title: `Goodbye, ${result.employee?.name}!`, badge: '👋 Check-out Recorded', badgeClass: 'bg-success-50 text-success-600' },
-    done: { title: `${result.employee?.name}`,           badge: 'ℹ️ Attendance already completed today', badgeClass: 'bg-yellow-50 text-yellow-700' },
-  };
+  const timer = setTimeout(() => {
+    navigate("/logs");
+  }, 1000);
 
-  const msg = messages[scanType] || messages.in;
+  return () => clearTimeout(timer);
+}, [isSuccess, navigate]);
 
+  // const messages = {
+  //   in:   { title: `Welcome, ${result.employee?.name}!`, badge: '✔ Check-in Recorded',  badgeClass: 'bg-success-50 text-success-600' },
+  //   out:  { title: `Goodbye, ${result.employee?.name}!`, badge: '👋 Check-out Recorded', badgeClass: 'bg-success-50 text-success-600' },
+  //   done: { title: `${result.employee?.name}`,           badge: 'ℹ️ Attendance already completed today', badgeClass: 'bg-yellow-50 text-yellow-700' },
+  // };
+
+  // const msg = messages[scanType] || messages.in;
+const msg =
+  result.type === "already-marked"
+    ? {
+        title: `${result.employee?.name}`,
+        badge: "Attendance Already Marked Today",
+        badgeClass: "bg-yellow-50 text-yellow-700",
+      }
+    : {
+        title: `Welcome, ${result.employee?.name}!`,
+        badge: "Attendance Marked Successfully",
+        badgeClass: "bg-green-50 text-green-600",
+      };
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
