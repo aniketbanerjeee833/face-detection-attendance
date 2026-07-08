@@ -21,7 +21,7 @@ router.post('/mark', adminUserAuth, adminAuth, markAttendance);
 router.get('/', adminUserAuth, adminAuth, getAttendance);
 
 router.get('/summary', superAdminUserAuth, superAdminAuth, getSummary);
-router.get('/superadmin/all', superAdminUserAuth, superAdminAuth, getAttendanceSuperAdmin)
+router.get('/superadmin', superAdminUserAuth, superAdminAuth, getAttendanceSuperAdmin)
 // attendanceRoutes.js
 // router.get('/export', userAuth, adminAuth, exportAttendance);
 router.get('/export/superadmin', superAdminUserAuth, superAdminAuth, exportAttendanceSuperAdmin);

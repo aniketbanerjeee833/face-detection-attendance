@@ -58,15 +58,28 @@ getTodaySummary: build.query({
       }),
       invalidatesTags: ['Attendance', 'AttendanceSummary'],
     }),
-    getAttendanceSuperAdmin: build.query({
-  query: ({ page, limit, search, date, admin_id }) => {
-    const params = new URLSearchParams({ page, limit });
-    if (search) params.set('search', search);
-    if (date) params.set('date', date);
-    if (admin_id) params.set('admin_id', admin_id);
-    return `/attendance/superadmin/all?${params.toString()}`;
-  },
-}),
+     getAttendanceSuperAdmin: build.query({
+      query: ({ date, page = 1, limit = 10, search = '', police_station_id = '' } = {}) => {
+        const p = new URLSearchParams();
+        if (date)              p.set('date', date);
+        if (search)            p.set('search', search);
+        if (police_station_id) p.set('police_station_id', police_station_id);
+        p.set('page', page);
+        p.set('limit', limit);
+        return `/attendance/superadmin?${p.toString()}`;
+      },
+      providesTags: ['Attendance'],
+    }),
+
+//     getAttendanceSuperAdmin: build.query({
+//   query: ({ page, limit, search, date, admin_id }) => {
+//     const params = new URLSearchParams({ page, limit });
+//     if (search) params.set('search', search);
+//     if (date) params.set('date', date);
+//     if (admin_id) params.set('admin_id', admin_id);
+//     return `/attendance/superadmin/all?${params.toString()}`;
+//   },
+// }),
 
   }),
 });

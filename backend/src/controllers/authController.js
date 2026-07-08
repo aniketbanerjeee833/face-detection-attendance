@@ -288,25 +288,50 @@ const cookieName = (role) =>
 const loginCore = async (req, res, requiredRole) => {
   const { username, password, police_station_id } = req.body;
 
-  if (!username || !password || !police_station_id) {
-    return res.status(400).json({ success: false, message: 'Username, password, and police station are required' });
-  }
-
   try {
-    const [rows] = await db.execute(
-      'SELECT * FROM admins WHERE username = ? AND police_station_id = ?',
-      [username, police_station_id]
-    );
-    if (!rows.length)
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    let rows;
 
-    const account = rows[0];
-    const match = await bcrypt.compare(password, account.password);
-    if (!match || account.role !== requiredRole) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (requiredRole === "superadmin") {
+      // Superadmin login - no police station check
+      [rows] = await db.execute(
+        "SELECT * FROM admins WHERE username = ?",
+        [username]
+      );
+    } else {
+      // Admin login - police station required
+      if (!police_station_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Police station is required",
+        });
+      }
+
+      [rows] = await db.execute(
+        "SELECT * FROM admins WHERE username = ? AND police_station_id = ?",
+        [username, police_station_id]
+      );
     }
 
-    const sessionId = crypto.randomBytes(32).toString('hex');
+    if (!rows.length) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    const account = rows[0];
+
+    const match = await bcrypt.compare(password, account.password);
+
+    if (!match || account.role !== requiredRole) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    const sessionId = crypto.randomBytes(32).toString("hex");
+
     await db.execute(
       `INSERT INTO admin_sessions (session_id, admin_id, created_at, expires_at)
        VALUES (?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 1 DAY))`,
@@ -314,12 +339,16 @@ const loginCore = async (req, res, requiredRole) => {
     );
 
     res.cookie(cookieName(requiredRole), sessionId, {
-      httpOnly: true, secure: isProduction, sameSite: 'Lax', path: '/', maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       admin: {
         id: account.id,
         name: account.name,
@@ -330,9 +359,14 @@ const loginCore = async (req, res, requiredRole) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
+
 const loginAdmin = asyncHandler((req, res) => loginCore(req, res, 'admin'));
 const loginSuperAdmin = asyncHandler((req, res) => loginCore(req, res, 'superadmin'));
 

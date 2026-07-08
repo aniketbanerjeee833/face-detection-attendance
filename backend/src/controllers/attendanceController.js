@@ -252,128 +252,55 @@ const getAttendance = asyncHandler(async (req, res) => {
 });
 
 
+
 // const getSummary = asyncHandler(async (req, res) => {
 //   const date = req.query.date || new Date().toISOString().split("T")[0];
-//   const adminIdFilter = req.query.admin_id ? Number(req.query.admin_id) : null;
+//   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
 
 //   try {
 //     let empWhere = "WHERE 1 = 1";
 //     const empParams = [];
-//     if (adminIdFilter) {
-//       empWhere += " AND admin_id = ?";
-//       empParams.push(adminIdFilter);
-//     }
+//     if (stationIdFilter) { empWhere += " AND police_station_id = ?"; empParams.push(stationIdFilter); }
 
 //     const [[{ total }]] = await db.query(
-//       `SELECT COUNT(*) AS total FROM employees ${empWhere}`,
-//       empParams
+//       `SELECT COUNT(*) AS total FROM employees ${empWhere}`, empParams
 //     );
 
-//     let attWhere = "WHERE DATE(a.in_time) = ?";
+//     let attWhere = "WHERE DATE(a.marked_at) = ?";
 //     const attParams = [date];
-//     if (adminIdFilter) {
-//       attWhere += " AND e.admin_id = ?";
-//       attParams.push(adminIdFilter);
-//     }
+//     if (stationIdFilter) { attWhere += " AND e.police_station_id = ?"; attParams.push(stationIdFilter); }
 
 //     const [[{ present }]] = await db.query(
 //       `SELECT COUNT(DISTINCT a.employee_id) AS present
-//        FROM attendance a
-//        JOIN employees e ON a.employee_id = e.id
-//        ${attWhere}`,
+//        FROM attendance a JOIN employees e ON a.employee_id = e.id ${attWhere}`,
 //       attParams
 //     );
 
-//     let outWhere = "WHERE DATE(a.out_time) = ? AND a.out_time IS NOT NULL";
-//     const outParams = [date];
-//     if (adminIdFilter) {
-//       outWhere += " AND e.admin_id = ?";
-//       outParams.push(adminIdFilter);
-//     }
-
-//     const [[{ checkedOut }]] = await db.query(
-//       `SELECT COUNT(DISTINCT a.employee_id) AS checkedOut
-//        FROM attendance a
-//        JOIN employees e ON a.employee_id = e.id
-//        ${outWhere}`,
-//       outParams
-//     );
-
 //     let breakdown = [];
-//     if (!adminIdFilter) {
+//     if (!stationIdFilter) {
 //       const [rows] = await db.query(
 //         `
 //         SELECT
-//           ad.id AS admin_id,
-//           ad.name AS admin_name,
+//           ps.id AS police_station_id,
+//           ps.name AS police_station_name,
 //           COUNT(DISTINCT e.id) AS total,
-//           COUNT(DISTINCT CASE WHEN DATE(a.in_time) = ? THEN a.employee_id END) AS present,
-//           COUNT(DISTINCT CASE WHEN DATE(a.out_time) = ? AND a.out_time IS NOT NULL THEN a.employee_id END) AS checkedOut
-//         FROM admins ad
-//         LEFT JOIN employees e ON e.admin_id = ad.id
+//           COUNT(DISTINCT CASE WHEN DATE(a.marked_at) = ? THEN a.employee_id END) AS present
+//         FROM police_stations ps
+//         LEFT JOIN employees e ON e.police_station_id = ps.id
 //         LEFT JOIN attendance a ON a.employee_id = e.id
-//         WHERE ad.role = 'admin'
-//         GROUP BY ad.id, ad.name
-//         ORDER BY ad.name ASC
+//         GROUP BY ps.id, ps.name
+//         ORDER BY ps.name ASC
 //         `,
-//         [date, date]
+//         [date]
 //       );
-//       breakdown = rows;
+//       breakdown = rows.map((r) => ({ ...r, absent: r.total - r.present }));
 //     }
 
-//     res.json({ total, present, checkedOut, date, breakdown });
+//     res.json({ total, present, absent: total - present, date, breakdown });
 //   } catch (err) {
 //     res.status(500).json({ message: "Server error", error: err.message });
 //   }
 // });
-const getSummary = asyncHandler(async (req, res) => {
-  const date = req.query.date || new Date().toISOString().split("T")[0];
-  const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
-
-  try {
-    let empWhere = "WHERE 1 = 1";
-    const empParams = [];
-    if (stationIdFilter) { empWhere += " AND police_station_id = ?"; empParams.push(stationIdFilter); }
-
-    const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) AS total FROM employees ${empWhere}`, empParams
-    );
-
-    let attWhere = "WHERE DATE(a.marked_at) = ?";
-    const attParams = [date];
-    if (stationIdFilter) { attWhere += " AND e.police_station_id = ?"; attParams.push(stationIdFilter); }
-
-    const [[{ present }]] = await db.query(
-      `SELECT COUNT(DISTINCT a.employee_id) AS present
-       FROM attendance a JOIN employees e ON a.employee_id = e.id ${attWhere}`,
-      attParams
-    );
-
-    let breakdown = [];
-    if (!stationIdFilter) {
-      const [rows] = await db.query(
-        `
-        SELECT
-          ps.id AS police_station_id,
-          ps.name AS police_station_name,
-          COUNT(DISTINCT e.id) AS total,
-          COUNT(DISTINCT CASE WHEN DATE(a.marked_at) = ? THEN a.employee_id END) AS present
-        FROM police_stations ps
-        LEFT JOIN employees e ON e.police_station_id = ps.id
-        LEFT JOIN attendance a ON a.employee_id = e.id
-        GROUP BY ps.id, ps.name
-        ORDER BY ps.name ASC
-        `,
-        [date]
-      );
-      breakdown = rows.map((r) => ({ ...r, absent: r.total - r.present }));
-    }
-
-    res.json({ total, present, absent: total - present, date, breakdown });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
 const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
   const { date, search } = req.query;
   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
@@ -419,108 +346,116 @@ const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
   }
 });
 
+const getSummary = asyncHandler(async (req, res) => {
+  const date = req.query.date || new Date().toISOString().split("T")[0];
+  const stationIdFilter = req.query.police_station_id
+    ? Number(req.query.police_station_id)
+    : null;
 
-// const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
-//   const { date, search } = req.query;
-//   const adminIdFilter = req.query.admin_id ? Number(req.query.admin_id) : null;
+  try {
+    // Build attendance filter
+    let attWhere = "WHERE DATE(a.marked_at) = ?";
+    const attParams = [date];
 
-//   try {
-//     const page = Number(req.query.page || 1);
-//     const limit = Number(req.query.limit || 10);
-//     const offset = (page - 1) * limit;
+    if (stationIdFilter) {
+      attWhere += " AND e.police_station_id = ?";
+      attParams.push(stationIdFilter);
+    }
 
-//     let whereClause = "WHERE 1 = 1";
-//     const params = [];
+    // Check if any attendance exists for this date
+    const [[{ attendanceCount }]] = await db.query(
+      `
+      SELECT COUNT(*) AS attendanceCount
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      ${attWhere}
+      `,
+      attParams
+    );
 
-//     if (adminIdFilter) {
-//       whereClause += " AND e.admin_id = ?";
-//       params.push(adminIdFilter);
-//     }
-//     if (date) {
-//       whereClause += " AND DATE(a.in_time) = ?";
-//       params.push(date);
-//     }
-//     if (search) {
-//       whereClause += " AND e.name LIKE ?";
-//       params.push(`%${search}%`);
-//     }
+    // If no attendance exists, return noData
+    if (attendanceCount === 0) {
+      return res.json({
+        total: 0,
+        present: 0,
+        absent: 0,
+        date,
+        breakdown: [],
+        noData: true,
+        message: "No attendance found for this date.",
+      });
+    }
 
-//     const [countRows] = await db.query(
-//       `SELECT COUNT(DISTINCT e.id) AS total
-//        FROM attendance a
-//        JOIN employees e ON a.employee_id = e.id
-//        ${whereClause}`,
-//       params
-//     );
-//     const total = countRows[0].total;
+    // Employee count
+    let empWhere = "WHERE 1 = 1";
+    const empParams = [];
 
-//     const [empRows] = await db.query(
-//       `
-//       SELECT
-//         e.id AS employee_id, e.name, e.photo_url, e.admin_id,
-//         ad.name AS admin_name,
-//         MAX(a.in_time) AS latest_in
-//       FROM attendance a
-//       JOIN employees e ON a.employee_id = e.id
-//       JOIN admins ad ON e.admin_id = ad.id
-//       ${whereClause}
-//       GROUP BY e.id, e.name, e.photo_url, e.admin_id, ad.name
-//       ORDER BY latest_in DESC
-//       LIMIT ? OFFSET ?
-//       `,
-//       [...params, limit, offset]
-//     );
+    if (stationIdFilter) {
+      empWhere += " AND police_station_id = ?";
+      empParams.push(stationIdFilter);
+    }
 
-//     if (!empRows.length) {
-//       return res.json({
-//         attendance: [],
-//         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-//       });
-//     }
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) AS total FROM employees ${empWhere}`,
+      empParams
+    );
 
-//     const employeeIds = empRows.map((e) => e.employee_id);
+    // Present count
+    const [[{ present }]] = await db.query(
+      `
+      SELECT COUNT(DISTINCT a.employee_id) AS present
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      ${attWhere}
+      `,
+      attParams
+    );
 
-//     let sessionWhere = "WHERE a.employee_id IN (?)";
-//     const sessionParams = [employeeIds];
-//     if (date) {
-//       sessionWhere += " AND DATE(a.in_time) = ?";
-//       sessionParams.push(date);
-//     }
+    // Breakdown (only for all police stations)
+    let breakdown = [];
 
-//     const [sessions] = await db.query(
-//       `
-//       SELECT
-//         a.id,
-//         a.employee_id,
-//         DATE_FORMAT(a.in_time,  '%d %b %Y %h:%i:%s %p') AS in_time,
-//         DATE_FORMAT(a.out_time, '%d %b %Y %h:%i:%s %p') AS out_time,
-//         a.status,
-//         a.confidence
-//       FROM attendance a
-//       ${sessionWhere}
-//       ORDER BY a.in_time ASC
-//       `,
-//       sessionParams
-//     );
+    if (!stationIdFilter) {
+      const [rows] = await db.query(
+        `
+        SELECT
+          ps.id AS police_station_id,
+          ps.name AS police_station_name,
+          COUNT(DISTINCT e.id) AS total,
+          COUNT(DISTINCT CASE
+              WHEN DATE(a.marked_at) = ? THEN a.employee_id
+          END) AS present
+        FROM police_stations ps
+        LEFT JOIN employees e
+          ON e.police_station_id = ps.id
+        LEFT JOIN attendance a
+          ON a.employee_id = e.id
+        GROUP BY ps.id, ps.name
+        ORDER BY ps.name ASC
+        `,
+        [date]
+      );
 
-//     const attendance = empRows.map((emp) => ({
-//       employee_id: emp.employee_id,
-//       name: emp.name,
-//       photo_url: emp.photo_url,
-//       admin_id: emp.admin_id,
-//       admin_name: emp.admin_name,
-//       sessions: sessions.filter((s) => s.employee_id === emp.employee_id),
-//     }));
+      breakdown = rows.map((row) => ({
+        ...row,
+        absent: row.total - row.present,
+      }));
+    }
 
-//     res.json({
-//       attendance,
-//       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-//     });
-//   } catch (err) {
-//     res.status(500).json({ message: "Server error", error: err.message });
-//   }
-// });
-
+    res.json({
+      total,
+      present,
+      absent: total - present,
+      date,
+      breakdown,
+      noData: false,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+});
 const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
   const { date, search } = req.query;
   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
@@ -536,7 +471,7 @@ const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
       `
       SELECT
         e.name, e.phone_number, ps.name AS police_station_name,
-        DATE_FORMAT(a.marked_at, '%d %b %Y %h:%i:%s %p') AS marked_at
+        DATE_FORMAT(a.marked_at, '%d %b %Y %h:%i:%s %p') AS time
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
       JOIN police_stations ps ON e.police_station_id = ps.id
@@ -552,7 +487,7 @@ const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
       { header: 'Name', key: 'name', width: 25 },
       { header: 'Phone Number', key: 'phone_number', width: 18 },
       { header: 'Police Station', key: 'police_station_name', width: 25 },
-      { header: 'Marked At', key: 'marked_at', width: 25 },
+      { header: 'Time', key: 'time', width: 25 },
     ];
     sheet.getRow(1).font = { bold: true };
     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };

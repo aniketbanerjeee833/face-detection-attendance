@@ -122,11 +122,28 @@ const getAllEmployees = asyncHandler(async (req, res) => {
 });
 
 const getEmployee = asyncHandler(async (req, res) => {
-  const [rows] = await db.query(
-    'SELECT id, name, phone_number, address, photo_url FROM employees WHERE id = ? AND police_station_id = ?',
+  let rows;
+
+if (req.role === "superadmin") {
+  [rows] = await db.query(
+    "SELECT id, name, phone_number, address, photo_url FROM employees WHERE id = ?",
+    [req.params.id]
+  );
+} else {
+  [rows] = await db.query(
+    "SELECT id, name, phone_number, address, photo_url FROM employees WHERE id = ? AND police_station_id = ?",
     [req.params.id, req.policeStationId]
   );
-  if (!rows.length) throw new AppError('Employee not found', 404);
+}
+
+if (!rows.length) {
+  throw new AppError("Employee not found", 404);
+}
+  // const [rows] = await db.query(
+  //   'SELECT id, name, phone_number, address, photo_url FROM employees WHERE id = ? AND police_station_id = ?',
+  //   [req.params.id, req.policeStationId]
+  // );
+  // if (!rows.length) throw new AppError('Employee not found', 404);
   res.json({ employee: rows[0] });
 });
 

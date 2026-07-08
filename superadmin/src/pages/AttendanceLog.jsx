@@ -1,356 +1,170 @@
-
-
-// import { useState } from 'react';
-// import { motion } from 'framer-motion';
-// import { useGetAttendanceQuery } from '../redux/api/attendanceApi';
-// import Badge from '../components/ui/Badge';
-// import Spinner from '../components/ui/Spinner';
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import Button from '@/components/ui/Button';
-// import { useNavigate } from 'react-router-dom';
-// export default function AttendanceLog() {
-//   const [filterDate, setFilterDate] = useState(
-//     new Date().toISOString().split('T')[0]
-//   );
-//   const [page, setPage] = useState(1);
-//   const [perPage, setPerPage] = useState(10);
-// const navigate = useNavigate();
-//   // RTK Query re-fetches automatically whenever filterDate changes
-//   // and caches each date's result separately
-//   const { data, isLoading, isFetching } = useGetAttendanceQuery({ date: filterDate, page, limit: perPage });
-
-//   const logs = data?.attendance ?? [];
-//   const pagination = data?.pagination ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
-//   const totalPages = pagination.totalPages || 1;
-//   console.log(logs)
-//   const handleCheckOutClick = (log) => {
-//     navigate('/scan', {
-//       state: {
-//         checkoutMode: true,
-//         employeeId: log.employee_id,
-//         employeeName: log.name,
-//         returnTo: '/logs',
-//       },
-//     });
-//   };
-//   return (
-//     <div className="space-y-6">
-//       <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-slate-100">
-//         <label className="text-sm font-medium text-slate-500">Filter by date</label>
-//         <input
-//           type="date"
-//           value={filterDate}
-//           onChange={(e) => setFilterDate(e.target.value)}
-//           className="rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
-//         />
-//         <span className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-//           {isFetching ? 'Loading...' : `${logs.length} records`}
-//         </span>
-//       </div>
-
-//       {isLoading ? (
-//         <Spinner text="Loading logs..." />
-//       ) : logs.length === 0 ? (
-//         <div className="flex flex-col items-center gap-2 rounded-2xl bg-white py-16 text-center shadow-soft ring-1 ring-slate-100">
-//           <span className="text-3xl">📋</span>
-//           <p className="text-sm text-slate-400">No attendance records for this date.</p>
-//         </div>
-//       ) : (
-//         <motion.div
-//           initial={{ opacity: 0, y: 8 }}
-//           animate={{ opacity: 1, y: 0 }}
-//           className="overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-100"
-//         >
-//           <div className="overflow-x-auto">
-//                <table className="w-full text-left text-sm">
-//               <thead>
-//                 <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
-//                   <th className="px-6 py-3 font-medium">Sl No</th>
-//                   <th className="px-6 py-3 font-medium">Employee</th>
-//                   <th className="px-6 py-3 font-medium">In Time</th>
-//                   <th className="px-6 py-3 font-medium">Out Time</th>
-//                   <th className="px-6 py-3 font-medium">Status</th>
-//                   <th className="px-6 py-3 font-medium">Action</th>
-//                 </tr>
-//               </thead>
-//               <tbody className="divide-y divide-slate-50">
-//                 {logs?.map((log, i) => (
-//                   <tr key={log.id} className="hover:bg-blue-50/40">
-//                     <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
-//                     <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
-//                     <td className="px-6 py-3 text-slate-500">{log.in_time}</td>
-//                     <td className="px-6 py-3 text-slate-500">
-//                       {log.out_time ?? <span className="text-amber-500 text-xs font-medium">Not checked out</span>}
-//                     </td>
-//                     <td className="px-6 py-3">
-//                       <Badge status={log.status==="checked-out" ? "checked-out" : log.status} />
-//                       {/* <Badge status={log.status} /> */}
-//                       </td>
-//                     <td className="px-6 py-3">
-//                       {!log.out_time && (
-//                         <Button
-//                           size="sm"
-//                           variant="checkOut"
-//                           className='cursor-pointer'
-//                           onClick={() => handleCheckOutClick(log)}
-//                         >
-//                           Check Out
-//                         </Button>
-//                       )}
-//                     </td>
-//                   </tr>
-//                 ))}
-//               </tbody>
-//             </table>
-//           </div>
-//           {logs?.length > 0 && (
-//             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100">
-//               <div className="flex items-center gap-2 text-sm text-gray-500">
-//                 <span>Rows per page</span>
-//                 <Select
-//                   value={String(perPage)}
-//                   onValueChange={(v) => { setPerPage(Number(v)); setPage(1); }}
-//                 >
-//                   <SelectTrigger className="h-8 w-16 text-sm"><SelectValue /></SelectTrigger>
-//                   <SelectContent>
-//                     {[10, 20, 50].map((n) => (
-//                       <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-//                     ))}
-//                   </SelectContent>
-//                 </Select>
-//               </div>
-
-//               <span className="text-sm text-gray-500">
-//                 Page {page} of {totalPages} · {pagination.total ?? 0} total
-//               </span>
-
-//               <div className="flex items-center gap-1">
-//                 <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page === 1} className="h-8 px-2">«</Button>
-//                 <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="h-8 px-3">‹</Button>
-
-//                 {Array.from({ length: totalPages }, (_, i) => i + 1)
-//                   .filter((p) => p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1))
-//                   .reduce((acc, p, i, arr) => {
-//                     if (i > 0 && p - arr[i - 1] > 1) acc.push('...');
-//                     acc.push(p);
-//                     return acc;
-//                   }, [])
-//                   .map((p, i) =>
-//                     p === '...' ? (
-//                       <span key={`d${i}`} className="px-1 text-gray-400 text-sm">…</span>
-//                     ) : (
-//                       <Button
-//                         key={p}
-//                         variant={page === p ? 'default' : 'outline'}
-//                         size="sm"
-//                         onClick={() => setPage(p)}
-//                         className={`h-8 w-8 p-0 text-sm ${page === p ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : ''}`}
-//                       >
-//                         {p}
-//                       </Button>
-//                     )
-//                   )}
-
-//                 <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-8 px-3">›</Button>
-//                 <Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages} className="h-8 px-2">»</Button>
-//               </div>
-//             </div>
-//           )}
-//         </motion.div>
-//       )}
-//     </div>
-//   );
-// }
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { useGetAttendanceQuery, useGetAttendanceSuperAdminQuery } from '../redux/api/attendanceApi';
-import { useGetAdminsListQuery } from '../redux/api/employeeApi';
+
 import Badge from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Button from '@/components/ui/Button';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSearchParams } from 'react-router-dom';
 import { downloadAttendanceReport } from '@/utils/downloadAttendanceReport';
 import { FileSpreadsheet } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useGetPoliceStationsQuery } from '@/redux/api/policeStationApi';
 
+const formatDisplayDate = (isoDate) => {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
+};
 
 export default function AttendanceLog() {
-  const formatDisplayDate = (isoDate) => {
-    const [y, m, d] = isoDate.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
-  }
-  const navigate = useNavigate();
-
-  const [searchParams, setSearchParams] = useSearchParams();
-
   const { admin } = useSelector((s) => s.auth);
   const isSuperAdmin = admin?.role === 'superadmin';
 
-  // Derive everything from the URL so filters/pagination survive refresh & back/forward nav
-  const page = Number(searchParams.get('page') || 1);
-  const perPage = Number(searchParams.get('limit') || 10);
-  const search = searchParams.get('search') || '';
-  const filterDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
-  const adminIdFilter = searchParams.get('admin_id') || '';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page          = Number(searchParams.get('page')  || 1);
+  const perPage       = Number(searchParams.get('limit') || 10);
+  const search        = searchParams.get('search')             || '';
+  const filterDate    = searchParams.get('date')               || new Date().toISOString().split('T')[0];
+  const stationFilter = searchParams.get('police_station_id')  || '';
 
   const updateParams = (values) => {
     const params = new URLSearchParams(searchParams);
-
     Object.entries(values).forEach(([key, value]) => {
-      if (value === '' || value == null) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
+      if (value === '' || value == null) params.delete(key);
+      else params.set(key, String(value));
     });
-
     setSearchParams(params);
   };
 
-  // Make sure page, limit, and date always exist in the URL on first load
+  // Seed default params on first load
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     let changed = false;
-
-    if (!params.has('page')) { params.set('page', '1'); changed = true; }
+    if (!params.has('page'))  { params.set('page', '1');   changed = true; }
     if (!params.has('limit')) { params.set('limit', '10'); changed = true; }
-    if (!params.has('date')) { params.set('date', new Date().toISOString().split('T')[0]); changed = true; }
-
+    if (!params.has('date'))  { params.set('date', new Date().toISOString().split('T')[0]); changed = true; }
     if (changed) setSearchParams(params, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Local input state so typing doesn't hammer the URL/API on every keystroke
+  // Debounced search input
   const [searchInput, setSearchInput] = useState(search);
-
-  // Debounce: update the URL (and therefore trigger the query) 400ms after typing stops
   useEffect(() => {
     const t = setTimeout(() => {
-      if (searchInput.trim() !== search) {
+      if (searchInput.trim() !== search)
         updateParams({ search: searchInput.trim(), page: 1 });
-      }
     }, 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  const handleDateChange = (e) => {
-    updateParams({ date: e.target.value, page: 1 });
-  };
-
-  // ── Admin-scoped query (own employees only) ──────────────────────────
+  // ── Queries ───────────────────────────────────────────────────────────────
   const { data: adminData, isLoading: adminLoading, isFetching: adminFetching } =
     useGetAttendanceQuery(
       { date: filterDate, page, limit: perPage, search },
       { skip: isSuperAdmin }
     );
 
-  // ── Superadmin query (all admins, optional admin_id filter) ─────────
   const { data: superData, isLoading: superLoading, isFetching: superFetching } =
     useGetAttendanceSuperAdminQuery(
-      { date: filterDate, page, limit: perPage, search, admin_id: adminIdFilter },
+      { date: filterDate, page, limit: perPage, search, police_station_id: stationFilter },
       { skip: !isSuperAdmin }
     );
 
-  const { data: adminsListData } = useGetAdminsListQuery(undefined, { skip: !isSuperAdmin });
-  const adminsList = adminsListData?.admins ?? [];
+  // const { data: stationsData } = useGetPoliceStationsQuery(undefined, { skip: !isSuperAdmin });
+  // const stationsList = stationsData?.police_stations ?? [];
+ const { data: stationsData } = useGetPoliceStationsQuery(); // 👈 new
+  const stationsList = stationsData?.stations ?? [];
+  const data       = isSuperAdmin ? superData      : adminData;
+  const isLoading  = isSuperAdmin ? superLoading   : adminLoading;
+  const isFetching = isSuperAdmin ? superFetching  : adminFetching;
 
-  const data = isSuperAdmin ? superData : adminData;
-  const isLoading = isSuperAdmin ? superLoading : adminLoading;
-  const isFetching = isSuperAdmin ? superFetching : adminFetching;
-
-  const logs = data?.attendance ?? [];
-  const pagination = data?.pagination ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
+  const logs       = data?.attendance  ?? [];
+  const pagination = data?.pagination  ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
   const totalPages = pagination.totalPages || 1;
 
+  // ── Export ────────────────────────────────────────────────────────────────
   const [downloading, setDownloading] = useState(false);
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      await downloadAttendanceReport({
+        isSuperAdmin,
+        date: filterDate,
+        search,
+        policeStationId: stationFilter,
+      });
+    } catch {
+      toast.error('Failed to download report, please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
-const handleDownload = async () => {
-  setDownloading(true);
-  try {
-    await downloadAttendanceReport({
-      isSuperAdmin,
-      date: filterDate,
-      search,
-      adminId: adminIdFilter,
-    });
-  } catch (err) {
-   toast.error('Failed to download report, please try again.');
-  } finally {
-    setDownloading(false);
-  }
-};
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-slate-900">Attendance Log</h2>
         <p className="text-xs text-indigo-500">{formatDisplayDate(filterDate)}</p>
       </div>
+
+      {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-soft ring-1 ring-slate-100">
-        <label className="text-sm font-medium text-slate-500">Filter by date</label>
+        <label className="text-sm font-medium text-slate-500">Date</label>
         <input
           type="date"
           value={filterDate}
-
-          onChange={handleDateChange}
+          onChange={(e) => updateParams({ date: e.target.value, page: 1 })}
           className="rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
         />
 
         {isSuperAdmin && (
           <Select
-            value={adminIdFilter || 'all'}
-            onValueChange={(v) => updateParams({ admin_id: v === 'all' ? '' : v, page: 1 })}
+            value={stationFilter || 'all'}
+            onValueChange={(v) => updateParams({ police_station_id: v === 'all' ? '' : v, page: 1 })}
           >
-            <SelectTrigger className="h-10 w-48 text-sm"><SelectValue placeholder="Filter by admin" /></SelectTrigger>
+            <SelectTrigger className="h-10 w-52 text-sm">
+              <SelectValue placeholder="Filter by police station" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Admins</SelectItem>
-              {adminsList.map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+              <SelectItem value="all">All Police Stations</SelectItem>
+              {stationsList.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
 
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name..."
-            className="rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
-          />
-        </div>
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by name..."
+          className="rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
+        />
 
-        {/* <span className="ml-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-          {isFetching ? 'Loading...' : `${logs.length} records`}
-        </span> */}
         <div className="ml-auto flex items-center gap-2">
-  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-    {isFetching ? 'Loading...' : `${logs.length} records`}
-  </span>
-
-  <button
-    onClick={handleDownload}
-    disabled={downloading}
-    title="Download as Excel"
-    className="group flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 ring-1 ring-green-200 transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    <FileSpreadsheet size={14} className="text-green-600" />
-    {downloading ? 'Preparing...' : 'Export'}
-  </button>
-</div>
-        
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
+            {isFetching ? 'Loading...' : `${pagination.total ?? 0} records`}
+          </span>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            title="Download as Excel"
+            className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 ring-1 ring-green-200 transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FileSpreadsheet size={14} className="text-green-600" />
+            {downloading ? 'Preparing...' : 'Export'}
+          </button>
+        </div>
       </div>
-     
 
+      {/* Table */}
       {isLoading ? (
         <Spinner text="Loading logs..." />
       ) : logs.length === 0 ? (
@@ -370,70 +184,34 @@ const handleDownload = async () => {
                 <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
                   <th className="px-6 py-3 font-medium">Sl No</th>
                   <th className="px-6 py-3 font-medium">Employee</th>
-                  {isSuperAdmin && <th className="px-6 py-3 font-medium">Admin</th>}
-                  <th className="px-6 py-3 font-medium">In Time</th>
-                  <th className="px-6 py-3 font-medium">Out Time</th>
+                  <th className="px-6 py-3 font-medium">Police Station</th>
+                  <th className="px-6 py-3 font-medium">Time</th>
+                  {/* {isSuperAdmin && <th className="px-6 py-3 font-medium">Marked By</th>} */}
                   <th className="px-6 py-3 font-medium">Status</th>
                 </tr>
               </thead>
-              {/* <tbody className="divide-y divide-slate-50">
-                {logs?.map((log, i) => (
+              <tbody className="divide-y divide-slate-50">
+                {logs.map((log, i) => (
                   <tr key={log.id} className="hover:bg-blue-50/40">
                     <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
                     <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
-                    {isSuperAdmin && (
-                      <td className="px-6 py-3 text-slate-500">{log.admin_name}</td>
-                    )}
-                    <td className="px-6 py-3 text-slate-500">{log.in_time}</td>
-                    <td className="px-6 py-3 text-slate-500">
-                      {log.out_time ?? <span className="text-amber-500 text-xs font-medium">Not checked out</span>}
-                    </td>
+                    <td className="px-6 py-3 text-slate-500">{log.police_station_name}</td>
+                    <td className="px-6 py-3 text-slate-500">{log.marked_at}</td>
+                    {/* {isSuperAdmin && (
+                      <td className="px-6 py-3 text-slate-500">{log.marked_by_admin_name ?? '—'}</td>
+                    )} */}
                     <td className="px-6 py-3">
-                      <Badge status={log.status === "checked-out" ? "Duty Over" : "Duty In"} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody> */}
-              <tbody className="divide-y divide-slate-50">
-                {logs?.map((emp, i) => (
-                  <tr key={emp.employee_id} className="hover:bg-blue-50/40 align-top">
-                    <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
-                    <td className="px-6 py-3 font-semibold text-slate-900">{emp.name}</td>
-                    {isSuperAdmin && (
-                      <td className="px-6 py-3 text-slate-500">{emp.admin_name}</td>
-                    )}
-                    <td className="px-6 py-3 text-slate-500">
-                      <div className="space-y-1.5">
-                        {emp.sessions.map((s) => (
-                          <div key={s.id}>{s.in_time}</div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 text-slate-500">
-                      <div className="space-y-1.5">
-                        {emp.sessions.map((s) => (
-                          <div key={s.id}>
-                            {s.out_time ?? <span className="text-amber-500 text-xs font-medium">On Duty</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="space-y-1.5">
-                        {emp.sessions.map((s) => (
-                          <div key={s.id}>
-                            <Badge status={s.status === "checked-out" ? "Duty Over" : "Duty In"} />
-                          </div>
-                        ))}
-                      </div>
+                      <Badge status="Present" />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {logs?.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100">
+
+          {/* Pagination */}
+          {logs.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100 px-4 py-3">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <span>Rows per page</span>
                 <Select
@@ -466,14 +244,14 @@ const handleDownload = async () => {
                   }, [])
                   .map((p, i) =>
                     p === '...' ? (
-                      <span key={`d${i}`} className="px-1 text-gray-400 text-sm">…</span>
+                      <span key={`d${i}`} className="px-1 text-sm text-gray-400">…</span>
                     ) : (
                       <Button
                         key={p}
                         variant={page === p ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => updateParams({ page: p })}
-                        className={`h-8 w-8 p-0 text-sm ${page === p ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : ''}`}
+                        className={`h-8 w-8 p-0 text-sm ${page === p ? 'bg-indigo-600 text-white hover:bg-indigo-700' : ''}`}
                       >
                         {p}
                       </Button>

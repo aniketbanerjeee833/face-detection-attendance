@@ -92,8 +92,8 @@ export default function AttendanceLog() {
                   <th className="px-6 py-3 font-medium">Sl No</th>
                   <th className="px-6 py-3 font-medium">Employee</th>
                   <th className="px-6 py-3 font-medium">Police Station</th>
-                  <th className="px-6 py-3 font-medium">Marked At</th>
-                  <th className="px-6 py-3 font-medium">Marked By</th>
+                  <th className="px-6 py-3 font-medium">Time</th>
+                  {/* <th className="px-6 py-3 font-medium">Marked By</th> */}
                   <th className="px-6 py-3 font-medium">Status</th>
                 </tr>
               </thead>
@@ -104,7 +104,7 @@ export default function AttendanceLog() {
                     <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
                     <td className="px-6 py-3 text-slate-500">{log.police_station_name}</td>
                     <td className="px-6 py-3 text-slate-500">{log.marked_at}</td>
-                    <td className="px-6 py-3 text-slate-500">{log.marked_by_admin_name}</td>
+                    {/* <td className="px-6 py-3 text-slate-500">{log.marked_by_admin_name}</td> */}
                     <td className="px-6 py-3"><Badge status="Present" /></td>
                   </tr>
                 ))}
