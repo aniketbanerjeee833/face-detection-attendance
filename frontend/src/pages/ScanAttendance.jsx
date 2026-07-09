@@ -125,16 +125,34 @@ export default function ScanAttendance() {
   }, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance]);
 
   const handleReset = () => {
-    clearInterval(intervalRef.current);
-    scanningRef.current = false;
-    isProcessingRef.current = false;
-    setScanning(false);
-    setResult(null);
-    setStatusMsg('');
-    if (canvasRef.current) {
-      canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    }
-  };
+  clearInterval(intervalRef.current);
+  scanningRef.current = false;
+  isProcessingRef.current = false;
+  setScanning(false);
+  setResult(null);
+  setStatusMsg('');
+  if (canvasRef.current) {
+    canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  }
+
+  // Automatically resume scanning instead of requiring a manual "Scan Now"
+  // click every time — continuous scan-again is much better UX for a kiosk
+  // where people are queued up one after another.
+  if (cameraActive && modelsLoaded) {
+    startScanning();
+  }
+};
+  // const handleReset = () => {
+  //   clearInterval(intervalRef.current);
+  //   scanningRef.current = false;
+  //   isProcessingRef.current = false;
+  //   setScanning(false);
+  //   setResult(null);
+  //   setStatusMsg('');
+  //   if (canvasRef.current) {
+  //     canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  //   }
+  // };
 
   const handleStopCamera = () => {
     clearInterval(intervalRef.current);
