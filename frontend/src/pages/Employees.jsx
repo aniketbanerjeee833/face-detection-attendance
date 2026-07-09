@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import * as faceapi from 'face-api.js';
+import * as faceapi from '@vladmandic/face-api';;
 import toast from 'react-hot-toast'; // adjust if you use a different toast lib
 import { useFaceModels } from '../hooks/useFaceModels';
 import Spinner from '../components/ui/Spinner';
@@ -31,6 +31,7 @@ export default function Employees() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [detecting, setDetecting] = useState(false);
 
+
   // ── Photo capture mode: upload a file OR take a live photo ─────────────
   const [photoMode, setPhotoMode] = useState('upload'); // 'upload' | 'camera'
   const [cameraOn, setCameraOn] = useState(false);
@@ -45,6 +46,121 @@ export default function Employees() {
   const perPage = Number(searchParams.get("limit") || 10);
   const search = searchParams.get("search") || "";
 
+
+  const [idProofFile, setIdProofFile] = useState(null);
+  const [idProofPreview, setIdProofPreview] = useState(null);
+  const [idCameraOn, setIdCameraOn] = useState(false);
+  const [idFacingMode, setIdFacingMode] = useState('environment');
+  const idVideoRef = useRef(null);
+  const idStreamRef = useRef(null);
+
+  const handleIdProofChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIdProofFile(file);
+    setIdProofPreview(URL.createObjectURL(file));
+  };
+// Waits until the video actually has a real frame ready to draw
+const waitForVideoReady = (video, timeoutMs = 3000) => {
+  return new Promise((resolve, reject) => {
+    if (video.readyState >= video.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+      return resolve();
+    }
+    const start = Date.now();
+    const check = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0 && video.readyState >= video.HAVE_CURRENT_DATA) {
+        resolve();
+      } else if (Date.now() - start > timeoutMs) {
+        reject(new Error('Camera did not produce a frame in time'));
+      } else {
+        requestAnimationFrame(check);
+      }
+    };
+    check();
+  });
+};
+  const startIdCamera = async (mode = idFacingMode) => {
+    try {
+      if (idStreamRef.current) {
+        idStreamRef.current.getTracks().forEach((track) => track.stop());
+        idStreamRef.current = null;
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: mode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
+      idStreamRef.current = stream;
+      setIdFacingMode(mode);
+      setIdCameraOn(true);
+
+      if (idVideoRef.current) {
+        idVideoRef.current.srcObject = stream;
+        try {
+          await idVideoRef.current.play();
+        } catch (playErr) {
+          console.warn('id video.play() warning:', playErr);
+        }
+      }
+    } catch (err) {
+      toast.error('Could not access camera: ' + err.message);
+    }
+  };
+
+  const switchIdCamera = async () => {
+    const nextMode = idFacingMode === 'environment' ? 'user' : 'environment';
+    await startIdCamera(nextMode);
+  };
+
+  const stopIdCamera = () => {
+    if (idStreamRef.current) {
+      idStreamRef.current.getTracks().forEach((track) => track.stop());
+      idStreamRef.current = null;
+    }
+    setIdCameraOn(false);
+  };
+
+  const captureIdPhoto = async() => {
+    if (!idVideoRef.current) return;
+
+    const video = idVideoRef.current;
+    try {
+    await waitForVideoReady(video);
+  } catch {
+    toast.error('Camera not ready yet — please wait a second and try again');
+    return;
+  }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        toast.error('Failed to capture ID proof photo, please try again');
+        return;
+      }
+      const file = new File([blob], `idproof_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setIdProofFile(file);
+      setIdProofPreview(URL.createObjectURL(blob));
+      stopIdCamera();
+    }, 'image/jpeg', 0.9);
+  };
+  useEffect(() => {
+    return () => {
+      stopCamera();
+      stopIdCamera(); // ← add this
+    };
+  }, []);
   const updateParams = (values) => {
     const params = new URLSearchParams(searchParams);
     Object.entries(values).forEach(([key, value]) => {
@@ -86,6 +202,8 @@ export default function Employees() {
   const totalPages = pagination.totalPages || 1;
   const { data: stationsData } = useGetPoliceStationsQuery();
   const policeStations = stationsData?.stations ?? [];
+  // Waits until the video actually has a real frame ready to draw
+
   // ── Camera helpers ───────────────────────────────────────────────────
   // const startCamera = async () => {
   //   try {
@@ -209,6 +327,11 @@ export default function Employees() {
   const captureFrameDescriptor = async () => {
     if (!videoRef.current) return null;
     const video = videoRef.current;
+     try {
+    await waitForVideoReady(video);
+  } catch {
+    return null; // treat as a failed angle, loop already handles <3 successes
+  }
     const canvas = captureCanvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -216,7 +339,7 @@ export default function Employees() {
 
     try {
       const detection = await faceapi
-        .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
+        .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
       return detection ? { descriptor: Array.from(detection.descriptor), canvas: canvas.toDataURL('image/jpeg', 0.9) } : null;
@@ -341,12 +464,6 @@ export default function Employees() {
       setDetecting(false);
     }
   };
-  // const handlePhotoChange = (e) => {
-  //   const file = e.target.files[0];
-  //   if (!file) return;
-  //   setPhotoFile(file);
-  //   setPhotoPreview(URL.createObjectURL(file));
-  // };
 
   const openCreateForm = () => {
     resetForm();
@@ -368,37 +485,37 @@ export default function Employees() {
   //   setPhotoMode('upload');
   //   setShowForm(true);
   // };
-const openEditForm = (emp) => {
-  setEditingId(emp.id);
+  const openEditForm = (emp) => {
+    setEditingId(emp.id);
 
-  setForm({
-    name: emp.name || "",
-    phone_number: emp.phone_number || "",
-    address: emp.address || "",
-    aadhar_number: emp.aadhar_number || "",
-    police_station_id: "",
-  });
-
-  setPhotoFile(null);
-  setPhotoPreview(
-    emp.photo_url ? `http://localhost:5000${emp.photo_url}` : null
-  );
-  setPhotoMode("upload");
-  setShowForm(true);
-
-  setTimeout(() => {
-    formRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+    setForm({
+      name: emp.name || "",
+      phone_number: emp.phone_number || "",
+      address: emp.address || "",
+      aadhar_number: emp.aadhar_number || "",
+      police_station_id: emp.police_station_id || "", // ← new field
     });
-  }, 100);
-};
 
-  const handleCancel = () => {
-    stopCamera();
-    setShowForm(false);
-    resetForm();
+    setPhotoFile(null);
+    setPhotoPreview(
+      emp.photo_url ? `http://localhost:5000${emp.photo_url}` : null
+    );
+    setIdProofFile(null);
+  setIdProofPreview(
+    emp.id_proof_url ? `http://localhost:5000${emp.id_proof_url}` : null
+  );
+    setPhotoMode("upload");
+    setShowForm(true);
+
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   };
+
+
 
   // const handleSubmit = async (e) => {
   //   e.preventDefault();
@@ -469,47 +586,51 @@ const openEditForm = (emp) => {
   //     toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
   //   }
   // };
-  
+
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!/^\d{10}$/.test(form.phone_number)) return toast.error('Phone number must be exactly 10 digits');
-  if (!/^\d{12}$/.test(form.aadhar_number)) return toast.error('Aadhar number must be exactly 12 digits');
+    if (!/^\d{10}$/.test(form.phone_number)) return toast.error('Phone number must be exactly 10 digits');
+    if (!/^\d{12}$/.test(form.aadhar_number)) return toast.error('Aadhar number must be exactly 12 digits');
 
-  const isEdit = !!editingId;
+    const isEdit = !!editingId;
 
-  if (!isEdit && !form.police_station_id) {
-    return toast.error('Please select a police station');
-  }
-  if (!isEdit && !photoFile) return toast.error('Please capture a photo');
-  if (!isEdit && !capturedDescriptors) return toast.error('Please complete the multi-angle face capture');
-
-  const fd = new FormData();
-  fd.append('name', form.name);
-  fd.append('phone_number', form.phone_number);
-  fd.append('address', form.address);
-  fd.append('aadhar_number', form.aadhar_number);
-  if (!isEdit) {
-    fd.append('police_station_id', form.police_station_id); // only sent on create
-  }
-  if (photoFile) fd.append('photo', photoFile);
-  if (capturedDescriptors) fd.append('descriptors', JSON.stringify(capturedDescriptors));
-
-  try {
-    if (isEdit) {
-      await updateEmployee({ id: editingId, formData: fd }).unwrap();
-      toast.success('Employee updated successfully');
-    } else {
-      await createEmployee(fd).unwrap();
-      toast.success('Employee created and face registered successfully');
-      updateParams({ page: 1 });
+    if (!isEdit && !form.police_station_id) {
+      return toast.error('Please select a police station');
     }
-    setShowForm(false);
-    resetForm();
-  } catch (err) {
-    toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
-  }
-};
+    if (!isEdit && !photoFile) return toast.error('Please capture a photo');
+    if (!isEdit && !capturedDescriptors) return toast.error('Please complete the multi-angle face capture');
+
+    const fd = new FormData();
+    fd.append('name', form.name);
+    fd.append('phone_number', form.phone_number);
+    fd.append('address', form.address);
+    fd.append('aadhar_number', form.aadhar_number);
+    // if (!isEdit) {
+    //   fd.append('police_station_id', form.police_station_id); // only sent on create
+    // }
+   
+      fd.append('police_station_id', form.police_station_id); // only sent on create
+    
+    if (photoFile) fd.append('photo', photoFile);
+    if (idProofFile) fd.append('id_proof', idProofFile);
+    if (capturedDescriptors) fd.append('descriptors', JSON.stringify(capturedDescriptors));
+
+    try {
+      if (isEdit) {
+        await updateEmployee({ id: editingId, formData: fd }).unwrap();
+        toast.success('Employee updated successfully');
+      } else {
+        await createEmployee(fd).unwrap();
+        toast.success('Employee created and face registered successfully');
+        updateParams({ page: 1 });
+      }
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      toast.error(err?.data?.message || err.message || `Failed to ${isEdit ? 'update' : 'create'} employee`);
+    }
+  };
   // const handleSubmit = async (e) => {
   //   e.preventDefault();
 
@@ -556,17 +677,39 @@ const openEditForm = (emp) => {
     }
   };
 
- 
+
+  // const resetForm = () => {
+  //   setForm({ name: '', phone_number: '', address: '', aadhar_number: '', police_station_id: '' });
+  //   setPhotoFile(null);
+  //   setPhotoPreview(null);
+  //   setIdProofFile(null);
+  //   setIdProofPreview(null);
+  //   setCapturedDescriptors(null);
+  //   setEditingId(null);
+  //   setPhotoMode('upload');
+  //   setFacingMode('environment');
+  //   stopCamera();
+  // };
   const resetForm = () => {
-  setForm({ name: '', phone_number: '', address: '', aadhar_number: '', police_station_id: '' });
-  setPhotoFile(null);
-  setPhotoPreview(null);
-  setCapturedDescriptors(null);
-  setEditingId(null);
-  setPhotoMode('upload');
-  setFacingMode('environment');
-  stopCamera();
-};
+    setForm({ name: '', phone_number: '', address: '', aadhar_number: '', police_station_id: '' });
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setIdProofFile(null);
+    setIdProofPreview(null);
+    setCapturedDescriptors(null);
+    setEditingId(null);
+    setPhotoMode('upload');
+    setFacingMode('environment');
+    setIdFacingMode('environment'); // ← add
+    stopCamera();
+    stopIdCamera(); // ← add
+  };
+  const handleCancel = () => {
+    stopCamera();
+    stopIdCamera(); // ← add
+    setShowForm(false);
+    resetForm();
+  };
   if (isLoading) return <Spinner size="lg" text="Loading employees..." />;
 
   return (
@@ -634,7 +777,7 @@ const openEditForm = (emp) => {
       <AnimatePresence>
         {showForm && (
           <motion.div
-           ref={formRef}
+            ref={formRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -679,7 +822,7 @@ const openEditForm = (emp) => {
                       className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
                     />
                   </div>
-                  {!editingId && (
+                
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-slate-500">Police Station *</label>
                       <Select
@@ -698,7 +841,7 @@ const openEditForm = (emp) => {
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
+                  
                   {/* <div>
                     <label className="mb-1.5 block text-xs font-semibold text-slate-500">Place of Posting *</label>
                     <input
@@ -720,57 +863,58 @@ const openEditForm = (emp) => {
                   </div>
                 </div>
 
-                {/* ── Face Photo: upload OR live camera capture ────────────── */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-slate-500">
-                    Face Photo *
-                  </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* ── Face Photo: upload OR live camera capture ────────────── */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-500">
+                      Face Photo *
+                    </label>
 
-                  {/* Buttons: only show relevant action for current state */}
-                  {!cameraOn && (
-                    <div className="mb-3 flex gap-2">
-                      <label className="cursor-pointer rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200">
-                        📁 Choose File
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          onChange={(e) => { setPhotoMode('upload'); handlePhotoChange(e); }}
-                          className="hidden"
-                        />
-                      </label>
-                      <Button type="button" variant="outline" onClick={() => startCamera()}>
-                        📷 Take Photo
-                      </Button>
-                      {/* <Button type="button" variant="outline" onClick={startCamera}>
+                    {/* Buttons: only show relevant action for current state */}
+                    {!cameraOn && (
+                      <div className="mb-3 flex gap-2">
+                        <label className="cursor-pointer rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200">
+                          📁 Choose File
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            onChange={(e) => { setPhotoMode('upload'); handlePhotoChange(e); }}
+                            className="hidden"
+                          />
+                        </label>
+                        <Button type="button" variant="outline" onClick={() => startCamera()}>
+                          📷 Take Photo
+                        </Button>
+                        {/* <Button type="button" variant="outline" onClick={startCamera}>
                         📷 Take Photo
                       </Button> */}
-                    </div>
-                  )}
+                      </div>
+                    )}
 
-                  {/* Video preview is ALWAYS mounted so the ref exists before
+                    {/* Video preview is ALWAYS mounted so the ref exists before
                       getUserMedia resolves — fixes the black-screen bug where
                       the stream had nowhere to attach to on first click. */}
-                  <div
-                    className={`relative overflow-hidden rounded-xl bg-black ${cameraOn ? 'block' : 'hidden'}`}
-                    style={{ maxWidth: 320 }}
-                  >
-                    {/* <video
+                    <div
+                      className={`relative overflow-hidden rounded-xl bg-black ${cameraOn ? 'block' : 'hidden'}`}
+                      style={{ maxWidth: 320 }}
+                    >
+                      {/* <video
                       ref={videoRef}
                       autoPlay
                       playsInline
                       muted
                       className="w-full scale-x-[-1]"
                     /> */}
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className={`w-full ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-                    />
-                  </div>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`w-full ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                      />
+                    </div>
 
-                  {/* {cameraOn && (
+                    {/* {cameraOn && (
                     <div className="mt-2 flex gap-2">
                       <Button type="button" onClick={capturePhoto}>
                         📸 Capture Photo
@@ -780,7 +924,7 @@ const openEditForm = (emp) => {
                       </Button>
                     </div>
                   )} */}
-                  {/* {cameraOn && (
+                    {/* {cameraOn && (
                     <div className="mt-3 grid grid-cols-3 gap-2">
                       {/* // <div className="mt-2 flex gap-2"> 
                       <Button
@@ -819,51 +963,121 @@ const openEditForm = (emp) => {
                       </Button> 
                     </div>
                   )} */}
-                  {cameraOn && !captureProgress && (
-                    <div className="mt-2 flex gap-2">
-                      <Button type="button" onClick={captureMultiAngle}>
-                        📸 Capture Photo
-                      </Button>
-                      <Button type="button" variant="outline" onClick={switchCamera}>
-                        🔄 {facingMode === 'environment' ? 'Front' : 'Back'} Camera
-                      </Button>
-                      <Button type="button" variant="outline" onClick={stopCamera}>
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-
-                  {captureProgress && (
-                    <div className="mt-2 rounded-xl bg-indigo-50 px-4 py-3 text-center">
-                      <p className="text-sm font-semibold text-indigo-700">{captureProgress.prompt}</p>
-                      <p className="mt-1 text-xs text-indigo-500">Step {captureProgress.step} of {captureProgress.total}</p>
-                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
-                        <div
-                          className="h-full bg-indigo-600 transition-all"
-                          style={{ width: `${(captureProgress.step / captureProgress.total) * 100}%` }}
-                        />
+                    {cameraOn && !captureProgress && (
+                      <div className="mt-2 flex gap-2">
+                        <Button type="button" onClick={captureMultiAngle}>
+                          📸 Capture Photo
+                        </Button>
+                        <Button type="button" variant="outline" onClick={switchCamera}>
+                          🔄 {facingMode === 'environment' ? 'Front' : 'Back'} Camera
+                        </Button>
+                        <Button type="button" variant="outline" onClick={stopCamera}>
+                          Cancel
+                        </Button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <canvas ref={canvasRef} className="hidden" />
+                    {captureProgress && (
+                      <div className="mt-2 rounded-xl bg-indigo-50 px-4 py-3 text-center">
+                        <p className="text-sm font-semibold text-indigo-700">{captureProgress.prompt}</p>
+                        <p className="mt-1 text-xs text-indigo-500">Step {captureProgress.step} of {captureProgress.total}</p>
+                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
+                          <div
+                            className="h-full bg-indigo-600 transition-all"
+                            style={{ width: `${(captureProgress.step / captureProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                  {photoPreview && !cameraOn && (
-                    <div className="mt-3 flex items-center gap-3">
-                      <img
-                        src={photoPreview}
-                        alt="Preview"
-                        className="h-20 w-20 rounded-xl object-cover ring-1 ring-slate-200"
+                    <canvas ref={canvasRef} className="hidden" />
+
+                    {photoPreview && !cameraOn && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <img
+                          src={photoPreview}
+                          alt="Preview"
+                          className="h-20 w-20 rounded-xl object-cover ring-1 ring-slate-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                          className="text-xs font-medium text-red-500 hover:underline"
+                        >
+                          Remove photo
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {/* ── Optional ID Proof photo — no face detection needed, just stored ── */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-500">
+                      ID Proof Photo (optional)
+                    </label>
+
+                    {!idCameraOn && (
+                      <div className="mb-3 flex gap-2">
+                        <label className="cursor-pointer rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200">
+                          📁 Choose File
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            onChange={handleIdProofChange}
+                            className="hidden"
+                          />
+                        </label>
+                        <Button type="button" variant="outline" onClick={() => startIdCamera()}>
+                          📷 Take Photo
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Video preview always mounted while camera is on, same pattern as face photo */}
+                    <div
+                      className={`relative overflow-hidden rounded-xl bg-black ${idCameraOn ? 'block' : 'hidden'}`}
+                      style={{ maxWidth: 320 }}
+                    >
+                      <video
+                        ref={idVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`w-full ${idFacingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                        className="text-xs font-medium text-red-500 hover:underline"
-                      >
-                        Remove photo
-                      </button>
                     </div>
-                  )}
+
+                    {idCameraOn && (
+                      <div className="mt-2 flex gap-2">
+                        <Button type="button" onClick={captureIdPhoto}>
+                          📸 Capture Photo
+                        </Button>
+                        <Button type="button" variant="outline" onClick={switchIdCamera}>
+                          🔄 {idFacingMode === 'environment' ? 'Front' : 'Back'} Camera
+                        </Button>
+                        <Button type="button" variant="outline" onClick={stopIdCamera}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+
+                    {idProofPreview && !idCameraOn && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <img
+                          src={idProofPreview}
+                          alt="ID Proof Preview"
+                          className="h-20 w-20 rounded-xl object-cover ring-1 ring-slate-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setIdProofFile(null); setIdProofPreview(null); }}
+                          className="text-xs font-medium text-red-500 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
 
                 <Button type="submit" disabled={creating || updating || detecting}>
@@ -887,7 +1101,7 @@ const openEditForm = (emp) => {
                 <th className="px-6 py-3 font-medium">Police Station</th>
 
                 {/* <th className="px-6 py-3 font-medium">Place of Posting</th> */}
-                <th className="px-6 py-3 font-medium">Face</th>
+                {/* <th className="px-6 py-3 font-medium">Face</th> */}
                 <th className="px-6 py-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -913,11 +1127,11 @@ const openEditForm = (emp) => {
 
                   <td className="px-6 py-3 text-slate-500">{emp.police_station_name}</td>
                   {/* <td className="px-6 py-3 text-slate-500">{emp.place_of_posting}</td> */}
-                  <td className="px-6 py-3">
+                  {/* <td className="px-6 py-3">
                     {emp.face_descriptor
                       ? <span className="text-xs font-semibold text-green-600">✓ Registered</span>
                       : <span className="text-xs font-semibold text-red-500">✗ Not Registered</span>}
-                  </td>
+                  </td> */}
                   <td className="px-6 py-3">
                     <div className="flex flex-wrap gap-2">
                       <Button size="sm" variant="primary" onClick={() => openEditForm(emp)}>

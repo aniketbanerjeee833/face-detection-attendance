@@ -131,7 +131,7 @@ export default function RouterWrapper() {
               <Route element={<ProtectedLayout />}>
                 {/* <Route path="/dashboard" element={<Dashboard />} /> */}
                 <Route path="/scan" element={<ScanAttendance />} />
-                <Route path="/employees" element={<Employees />} />
+                {/* <Route path="/employees" element={<Employees />} /> */}
                 <Route path="/logs" element={<AttendanceLog />} />
               </Route>
             </Route>

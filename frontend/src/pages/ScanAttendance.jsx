@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import * as faceapi from 'face-api.js';
+import * as faceapi from '@vladmandic/face-api';;
 
 import { useFaceModels } from '../hooks/useFaceModels';
 import { useCamera } from '../hooks/useCamera';

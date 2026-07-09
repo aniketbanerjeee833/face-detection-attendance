@@ -59,11 +59,12 @@ getTodaySummary: build.query({
       invalidatesTags: ['Attendance', 'AttendanceSummary'],
     }),
      getAttendanceSuperAdmin: build.query({
-      query: ({ date, page = 1, limit = 10, search = '', police_station_id = '' } = {}) => {
+      query: ({ date, page = 1, limit = 10, search = '', police_station_id = '',admin_id='' } = {}) => {
         const p = new URLSearchParams();
         if (date)              p.set('date', date);
         if (search)            p.set('search', search);
         if (police_station_id) p.set('police_station_id', police_station_id);
+        if(admin_id) p.set('admin_id',admin_id)
         p.set('page', page);
         p.set('limit', limit);
         return `/attendance/superadmin?${p.toString()}`;

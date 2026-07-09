@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import * as faceapi from 'face-api.js';
+import * as faceapi from '@vladmandic/face-api';;
 import toast from 'react-hot-toast'; // adjust if you use a different toast lib
 import { useFaceModels } from '../hooks/useFaceModels';
 import Spinner from '../components/ui/Spinner';

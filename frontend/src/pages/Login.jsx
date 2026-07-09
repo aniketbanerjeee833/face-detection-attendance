@@ -156,7 +156,8 @@ export default function Login() {
           align-items: center;
           justify-content: center;
           color: #fff;
-          margin: 0 auto 14px;
+          // margin: 0 auto 14px;
+          margin: 0 auto 8px;
           flex-shrink: 0;
         }
 

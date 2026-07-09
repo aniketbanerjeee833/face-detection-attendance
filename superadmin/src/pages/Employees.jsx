@@ -229,6 +229,7 @@
 import { useSelector } from 'react-redux';
 import {
 
+  useGetAdminsListQuery,
   useGetEmployeesSuperAdminQuery,
  
 } from '../redux/api/employeeApi';
@@ -248,7 +249,7 @@ export default function Employees() {
   const perPage       = Number(searchParams.get('limit') || 10);
   const search        = searchParams.get('search')             || '';
   const stationFilter = searchParams.get('police_station_id')  || '';
-
+  const adminFilter = searchParams.get('admin_id') || ''; // ← new
   const updateParams = (values) => {
     const params = new URLSearchParams(searchParams);
     Object.entries(values).forEach(([key, value]) => {
@@ -274,10 +275,15 @@ export default function Employees() {
   //     { page, limit: perPage, search },
   //     { skip: isSuperAdmin }
   //   );
-
+ const { data: adminsData } = useGetAdminsListQuery(undefined, { skip: !isSuperAdmin }); // ← new
+//const adminsList = adminsData?.admins ?? [];
+const allAdminsList = adminsData?.admins ?? [];
+const adminsList = stationFilter
+  ? allAdminsList.filter((a) => String(a.police_station_id) === String(stationFilter))
+  : allAdminsList;
   const { data: superData, isLoading: superLoading, isFetching: superFetching } =
     useGetEmployeesSuperAdminQuery(
-      { page, limit: perPage, search, police_station_id: stationFilter },
+      { page, limit: perPage, search, police_station_id: stationFilter,admin_id: adminFilter },
       { skip: !isSuperAdmin }
     );
 
@@ -307,10 +313,13 @@ export default function Employees() {
         </h2>
 
         <div className="flex flex-wrap items-center gap-3">
-          {isSuperAdmin && (
+          
             <Select
               value={stationFilter || 'all'}
-              onValueChange={(v) => updateParams({ police_station_id: v === 'all' ? '' : v, page: 1 })}
+              onValueChange={(v) => updateParams({ police_station_id: v === 'all' ? '' : v,
+                 admin_id: '',  // ← reset admin when station changes
+                
+                page: 1 })}
             >
               <SelectTrigger className="h-9 w-52 text-sm">
                 <SelectValue placeholder="Filter by police station" />
@@ -322,7 +331,42 @@ export default function Employees() {
                 ))}
               </SelectContent>
             </Select>
-          )}
+              <Select
+              value={adminFilter || 'all'}
+              onValueChange={(v) => updateParams({ admin_id: v === 'all' ? '' : v, page: 1 })}
+            >
+              <SelectTrigger className="h-10 w-52 text-sm">
+                <SelectValue placeholder="Filter by admin" />
+              </SelectTrigger>
+             <SelectContent>
+  <SelectItem value="all">All Admins</SelectItem>
+
+  {adminsList.map((a) => (
+    <SelectItem key={a.id} value={String(a.id)}>
+      <div className="flex w-full items-center justify-between gap-6">
+        <span className="font-medium">{a.name}</span>
+        <span className="text-xs text-slate-500">
+          {a.police_station_name}
+        </span>
+      </div>
+    </SelectItem>
+  ))}
+</SelectContent>
+            </Select>
+          {/* <Select
+              value={adminFilter || 'all'}
+              onValueChange={(v) => updateParams({ admin_id: v === 'all' ? '' : v, page: 1 })}
+            >
+              <SelectTrigger className="h-10 w-52 text-sm">
+                <SelectValue placeholder="Filter by admin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Admins</SelectItem>
+                {adminsList.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select> */}
 
           <input
             type="text"
@@ -344,7 +388,8 @@ export default function Employees() {
                 <th className="px-6 py-3 font-medium">Name</th>
                 <th className="px-6 py-3 font-medium">Phone</th>
                 <th className="px-6 py-3 font-medium">Police Station</th>
-                <th className="px-6 py-3 font-medium">Face</th>
+                <th className="px-6 py-3 font-medium">Admin</th>
+                {/* <th className="px-6 py-3 font-medium">Face</th> */}
                 {!isSuperAdmin && <th className="px-6 py-3 font-medium">Actions</th>}
               </tr>
             </thead>
@@ -375,11 +420,12 @@ export default function Employees() {
                     <td className="px-6 py-3 font-medium text-slate-900">{emp.name}</td>
                     <td className="px-6 py-3 text-slate-500">{emp.phone_number}</td>
                     <td className="px-6 py-3 text-slate-500">{emp.police_station_name ?? '—'}</td>
-                    <td className="px-6 py-3">
+                      <td className="px-6 py-3 text-slate-500">{emp.added_by_admin_name ?? '—'}</td>
+                    {/* <td className="px-6 py-3">
                       {emp.face_descriptor
                         ? <span className="text-xs font-semibold text-green-600">✓ Registered</span>
                         : <span className="text-xs font-semibold text-red-500">✗ Not Registered</span>}
-                    </td>
+                    </td> */}
                     {/* {!isSuperAdmin && (
                       <td className="px-6 py-3">
                         <div className="flex flex-wrap gap-2">

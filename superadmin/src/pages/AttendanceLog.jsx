@@ -12,6 +12,7 @@ import { downloadAttendanceReport } from '@/utils/downloadAttendanceReport';
 import { FileSpreadsheet } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useGetPoliceStationsQuery } from '@/redux/api/policeStationApi';
+import { useGetAdminsListQuery } from '@/redux/api/employeeApi';
 
 const formatDisplayDate = (isoDate) => {
   const [y, m, d] = isoDate.split('-').map(Number);
@@ -25,12 +26,12 @@ export default function AttendanceLog() {
   const isSuperAdmin = admin?.role === 'superadmin';
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const page          = Number(searchParams.get('page')  || 1);
-  const perPage       = Number(searchParams.get('limit') || 10);
-  const search        = searchParams.get('search')             || '';
-  const filterDate    = searchParams.get('date')               || new Date().toISOString().split('T')[0];
-  const stationFilter = searchParams.get('police_station_id')  || '';
-
+  const page = Number(searchParams.get('page') || 1);
+  const perPage = Number(searchParams.get('limit') || 10);
+  const search = searchParams.get('search') || '';
+  const filterDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const stationFilter = searchParams.get('police_station_id') || '';
+  const adminFilter = searchParams.get('admin_id') || ''; // ← new
   const updateParams = (values) => {
     const params = new URLSearchParams(searchParams);
     Object.entries(values).forEach(([key, value]) => {
@@ -44,9 +45,9 @@ export default function AttendanceLog() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     let changed = false;
-    if (!params.has('page'))  { params.set('page', '1');   changed = true; }
+    if (!params.has('page')) { params.set('page', '1'); changed = true; }
     if (!params.has('limit')) { params.set('limit', '10'); changed = true; }
-    if (!params.has('date'))  { params.set('date', new Date().toISOString().split('T')[0]); changed = true; }
+    if (!params.has('date')) { params.set('date', new Date().toISOString().split('T')[0]); changed = true; }
     if (changed) setSearchParams(params, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,20 +72,29 @@ export default function AttendanceLog() {
 
   const { data: superData, isLoading: superLoading, isFetching: superFetching } =
     useGetAttendanceSuperAdminQuery(
-      { date: filterDate, page, limit: perPage, search, police_station_id: stationFilter },
+      {
+        date: filterDate, page, limit: perPage, search, police_station_id: stationFilter,
+        admin_id: adminFilter
+      },
       { skip: !isSuperAdmin }
     );
+  const { data: adminsData } = useGetAdminsListQuery(undefined, { skip: !isSuperAdmin }); // ← new
+  //const adminsList = adminsData?.admins ?? [];
+  const allAdminsList = adminsData?.admins ?? [];
+  const adminsList = stationFilter
+    ? allAdminsList.filter((a) => String(a.police_station_id) === String(stationFilter))
+    : allAdminsList;
 
   // const { data: stationsData } = useGetPoliceStationsQuery(undefined, { skip: !isSuperAdmin });
   // const stationsList = stationsData?.police_stations ?? [];
- const { data: stationsData } = useGetPoliceStationsQuery(); // 👈 new
+  const { data: stationsData } = useGetPoliceStationsQuery(); // 👈 new
   const stationsList = stationsData?.stations ?? [];
-  const data       = isSuperAdmin ? superData      : adminData;
-  const isLoading  = isSuperAdmin ? superLoading   : adminLoading;
-  const isFetching = isSuperAdmin ? superFetching  : adminFetching;
+  const data = isSuperAdmin ? superData : adminData;
+  const isLoading = isSuperAdmin ? superLoading : adminLoading;
+  const isFetching = isSuperAdmin ? superFetching : adminFetching;
 
-  const logs       = data?.attendance  ?? [];
-  const pagination = data?.pagination  ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
+  const logs = data?.attendance ?? [];
+  const pagination = data?.pagination ?? { page: 1, limit: perPage, total: 0, totalPages: 1 };
   const totalPages = pagination.totalPages || 1;
 
   // ── Export ────────────────────────────────────────────────────────────────
@@ -97,6 +107,7 @@ export default function AttendanceLog() {
         date: filterDate,
         search,
         policeStationId: stationFilter,
+        adminId: adminFilter
       });
     } catch {
       toast.error('Failed to download report, please try again.');
@@ -123,22 +134,101 @@ export default function AttendanceLog() {
           className="rounded-xl border border-slate-200 px-3.5 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
         />
 
-        {isSuperAdmin && (
-          <Select
-            value={stationFilter || 'all'}
-            onValueChange={(v) => updateParams({ police_station_id: v === 'all' ? '' : v, page: 1 })}
-          >
-            <SelectTrigger className="h-10 w-52 text-sm">
-              <SelectValue placeholder="Filter by police station" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Police Stations</SelectItem>
-              {stationsList.map((s) => (
-                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+
+        <Select
+          value={stationFilter || 'all'}
+          onValueChange={(v) => updateParams({
+            police_station_id: v === 'all' ? '' : v,
+            admin_id: '',  // ← reset admin when station changes
+            page: 1
+          })}
+        >
+          <SelectTrigger className="h-10 w-52 text-sm">
+            <SelectValue placeholder="Filter by police station" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Police Stations</SelectItem>
+            {stationsList.map((s) => (
+              <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+
+
+
+
+
+        {/* <Select
+    value={adminFilter || 'all'}
+    onValueChange={(v) => updateParams({ admin_id: v === 'all' ? '' : v, page: 1 })}
+  >
+    <SelectTrigger className="h-10 w-52 text-sm">
+      <SelectValue placeholder="Filter by admin" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All Admins</SelectItem>
+      {adminsList.map((a) => (
+        <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+      ))}
+    </SelectContent>
+  </Select> */}
+        <Select
+          value={adminFilter || 'all'}
+          onValueChange={(v) => updateParams({ admin_id: v === 'all' ? '' : v, page: 1 })}
+        >
+          <SelectTrigger className="h-10 w-52 text-sm">
+            <SelectValue placeholder="Filter by admin" />
+          </SelectTrigger>
+          {/* <SelectContent>
+            <SelectItem value="all">All Admins</SelectItem>
+
+           
+            {stationFilter ? (
+              // Station selected — just show filtered admins, no grouping needed
+              adminsList.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>
+                  {a.name}
+                </SelectItem>
+              ))
+            ) : (
+              // No station selected — group admins by station
+              stationsList.map((station) => {
+                const stationAdmins = allAdminsList.filter(
+                  (a) => String(a.police_station_id) === String(station.id)
+                );
+                if (!stationAdmins.length) return null;
+                return (
+                  <div key={station.id}>
+                    {/* Station group label 
+                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                      {station.name}
+                    </div>
+                    {stationAdmins.map((a) => (
+                      <SelectItem key={a.id} value={String(a.id)}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </div>
+                );
+              })
+            )}
+          </SelectContent> */}
+                  <SelectContent>
+            <SelectItem value="all">All Admins</SelectItem>
+          
+            {adminsList.map((a) => (
+              <SelectItem key={a.id} value={String(a.id)}>
+                <div className="flex w-full items-center justify-between gap-6">
+                  <span className="font-medium">{a.name}</span>
+                  <span className="text-xs text-slate-500">
+                    {a.police_station_name}
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <input
           type="text"
@@ -185,6 +275,7 @@ export default function AttendanceLog() {
                   <th className="px-6 py-3 font-medium">Sl No</th>
                   <th className="px-6 py-3 font-medium">Employee</th>
                   <th className="px-6 py-3 font-medium">Police Station</th>
+                  <th className="px-6 py-3 font-medium">Admin</th>
                   <th className="px-6 py-3 font-medium">Time</th>
                   {/* {isSuperAdmin && <th className="px-6 py-3 font-medium">Marked By</th>} */}
                   <th className="px-6 py-3 font-medium">Status</th>
@@ -196,6 +287,7 @@ export default function AttendanceLog() {
                     <td className="px-6 py-3 text-slate-400">{(page - 1) * perPage + i + 1}</td>
                     <td className="px-6 py-3 font-semibold text-slate-900">{log.name}</td>
                     <td className="px-6 py-3 text-slate-500">{log.police_station_name}</td>
+                    <td className="px-6 py-3 text-slate-500">{log.added_by_admin_name ?? '—'}</td>
                     <td className="px-6 py-3 text-slate-500">{log.marked_at}</td>
                     {/* {isSuperAdmin && (
                       <td className="px-6 py-3 text-slate-500">{log.marked_by_admin_name ?? '—'}</td>

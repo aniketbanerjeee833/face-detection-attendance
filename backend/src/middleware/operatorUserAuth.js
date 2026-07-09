@@ -1,0 +1,38 @@
+// middleware/operatorUserAuth.js
+import db from '../config/db.js';
+
+const operatorUserAuth = async (req, res, next) => {
+  try {
+    const sessionId = req.cookies.operator_session_id;
+    if (!sessionId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const [results] = await db.query(`
+      SELECT us.admin_id, u.name, u.username, u.role, u.police_station_id
+      FROM admin_sessions us
+      JOIN admins u ON us.admin_id = u.id
+      WHERE us.session_id = ? AND us.expires_at > NOW() AND u.role = 'admin'
+    `, [sessionId]);
+
+    if (results.length === 0) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired session' });
+    }
+
+    req.user = {
+      User_Id: results[0].admin_id,
+      name: results[0].name,
+      username: results[0].username,
+      role: results[0].role,
+      policeStationId: results[0].police_station_id,
+    };
+    req.adminId = results[0].admin_id; // ← matches what createEmployee reads
+
+    next();
+  } catch (err) {
+    console.error('Session validation error:', err);
+    next(err);
+  }
+};
+
+export default operatorUserAuth;

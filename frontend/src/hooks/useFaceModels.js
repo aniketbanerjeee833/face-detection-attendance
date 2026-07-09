@@ -1,5 +1,5 @@
 // import { useState, useEffect } from 'react';
-// import * as faceapi from 'face-api.js';
+// import * as faceapi from '@vladmandic/face-api';;
 
 // export const useFaceModels = () => {
 //   const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -27,8 +27,8 @@
 // };
 
 import { useState, useEffect } from 'react';
-import * as faceapi from 'face-api.js';
-
+import * as faceapi from '@vladmandic/face-api';;
+//import * as faceapi from 'face-api.js'
 // Module-level state — shared across every component that calls useFaceModels(),
 // persists for the lifetime of the page (not per-component-mount).
 let loadPromise = null;

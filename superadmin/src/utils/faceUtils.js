@@ -1,4 +1,4 @@
-// import * as faceapi from 'face-api.js';
+// import * as faceapi from '@vladmandic/face-api';;
 
 // // Euclidean distance between two descriptors
 // export const getDistance = (d1, d2) => {
@@ -106,7 +106,7 @@
 
 
 
-import * as faceapi from 'face-api.js';
+import * as faceapi from '@vladmandic/face-api';;
 
 // Euclidean distance between two descriptors
 export const getDistance = (d1, d2) => {

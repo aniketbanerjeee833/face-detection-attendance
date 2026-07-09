@@ -91,18 +91,19 @@ export const employeeApi = createApi({
 //   },
 // }),
 getEmployeesSuperAdmin: build.query({
-      query: ({ page = 1, limit = 10, search = '', police_station_id = '' } = {}) => {
+      query: ({ page = 1, limit = 10, search = '', police_station_id = '',admin_id='' } = {}) => {
         const p = new URLSearchParams({ page, limit });
         if (search)            p.set('search', search);
         if (police_station_id) p.set('police_station_id', police_station_id);
+        if(admin_id)           p.set('admin_id',admin_id)
         return `/employees/superadmin/all?${p.toString()}`;
       },
       providesTags: [{ type: 'Employee', id: 'LIST' }],
     }),
 
-// getAdminsList: build.query({
-//   query: () => `/employees/superadmin/admins`,
-// }),
+getAdminsList: build.query({
+  query: () => `/employees/superadmin/admins`,
+}),
 
   }),
 });
@@ -112,5 +113,6 @@ export const {
   useGetEmployeeQuery,
  
   useGetEmployeesSuperAdminQuery,
+  useGetAdminsListQuery
 
 } = employeeApi;

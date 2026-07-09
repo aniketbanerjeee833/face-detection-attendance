@@ -81,6 +81,8 @@ import {
   Users,
   ClipboardList,
   LogOut,
+  Phone,
+  Clock,
 } from "lucide-react";
 import { clearAdmin } from '@/redux/slices/authSlice';
 
@@ -102,11 +104,11 @@ const navItems = [
     icon: Camera,
     label: "Scan Attendance",
   },
-  {
-    to: "/employees",
-    icon: Users,
-    label: "Employees",
-  },
+  // {
+  //   to: "/employees",
+  //   icon: Users,
+  //   label: "Employees",
+  // },
   
   {
     to: "/logs",
@@ -165,7 +167,7 @@ export default function Sidebar({ isOpen, onClose }) {
       </div>
 
       {/* Admin info */}
-      <div className="mx-4 mb-6 flex items-center gap-3 rounded-2xl bg-indigo-50 px-3.5 py-3">
+      {/* <div className="mx-4 mb-6 flex items-center gap-3 rounded-2xl bg-indigo-50 px-3.5 py-3">
         <div className="grid h-10 w-10 place-items-center rounded-full 
         bg-indigo-100 font-semibold text-indigo-700">
           {admin?.name?.[0]?.toUpperCase() || 'A'}
@@ -173,9 +175,33 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-slate-900">
             {admin?.name?.toUpperCase() || 'Admin'}</div>
-          {/* <div className="text-xs text-slate-400">Administrator</div> */}
+         
         </div>
+           <div className="truncate text-xs text-black-500">
+        👮 {admin?.${police_station_name} || "Police Station"}
       </div>
+      </div> */}
+      <div className="mx-4 mb-6 rounded-2xl bg-indigo-50 px-3.5 py-3">
+  <div className="flex items-center gap-3">
+    <div className="grid h-10 w-10 place-items-center rounded-full bg-indigo-100 font-semibold text-indigo-700">
+      {admin?.name?.[0]?.toUpperCase() || "A"}
+    </div>
+
+    <div className="min-w-0 flex-1">
+      {/* Row 1 */}
+      <div className="truncate text-sm font-semibold text-slate-900">
+        {admin?.name?.toUpperCase() || "ADMIN"}
+      </div>
+
+      {/* Row 2 */}
+      <div className="truncate text-xs text-slate-700 mt-1">
+        <span className="font-medium text-slate-700">
+          {admin?.police_station_name || "N/A"}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
 
       {/* Nav */}
       <nav
@@ -255,6 +281,44 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
         ))}
       </nav>
+
+           <div className="mx-3 mb-3 rounded-xl bg-indigo-50 px-4 py-3 ring-1 ring-indigo-100">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-400">
+          Technical Support
+        </p>
+
+        <div className="space-y-2">
+          <a
+            href="tel:9903634360"
+            className="flex items-center gap-2 text-sm font-semibold text-slate-700 transition-colors hover:text-indigo-600"
+          >
+            <Phone size={14} className="shrink-0 text-indigo-400" />
+            <span>9903634360</span>
+          </a>
+
+          <a
+            href="tel:9831166989"
+            className="flex items-center gap-2 text-sm font-semibold text-slate-700 transition-colors hover:text-indigo-600"
+          >
+            <Phone size={14} className="shrink-0 text-indigo-400" />
+            <span>9831166989</span>
+          </a>
+
+          <div className="mt-2 border-t border-indigo-100 pt-2">
+            <p className="mb-1 text-xs text-slate-600">
+              Emergency
+            </p>
+
+            <a
+              href="tel:9831166989"
+              className="flex items-center gap-2 text-sm font-semibold text-red-600 transition-colors hover:text-red-700"
+            >
+              <Phone size={14} className="shrink-0 text-red-400" />
+              <span>9831166989</span>
+            </a>
+          </div>
+        </div>
+      </div>
 
       {/* Logout */}
       <div className="px-3 pb-5">

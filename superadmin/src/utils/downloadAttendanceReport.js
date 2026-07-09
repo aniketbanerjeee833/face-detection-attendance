@@ -4,6 +4,7 @@ export const downloadAttendanceReport = async ({
   date,
   search,
   policeStationId,
+  adminId
 }) => {
   const base = "http://localhost:5000/api/attendance";
   const path = isSuperAdmin ? "/export/superadmin" : "/export";
@@ -17,6 +18,7 @@ export const downloadAttendanceReport = async ({
   if (isSuperAdmin && policeStationId) {
     params.set("police_station_id", policeStationId);
   }
+   if (isSuperAdmin && adminId) params.set('admin_id', adminId); // ← new
 
   const res = await fetch(`${base}${path}?${params.toString()}`, {
     method: "GET",

@@ -125,7 +125,8 @@ export default function Login() {
           align-items: center;
           justify-content: center;
           color: #fff;
-          margin: 0 auto 14px;
+          // margin: 0 auto 14px;
+           margin: 0 auto 8px;
           flex-shrink: 0;
         }
 
@@ -396,7 +397,7 @@ export default function Login() {
   ></i>
 </div>
 
-            <h2 className="l-title">Police Station</h2>
+            <h2 className="l-title">Super Admin</h2>
             <p className="l-sub">Sign in to continue</p>
 
             {error && <div className="l-error">{error}</div>}

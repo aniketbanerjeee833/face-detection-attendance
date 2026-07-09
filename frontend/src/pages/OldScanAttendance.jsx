@@ -1,6 +1,6 @@
 
 // import { useState, useRef, useEffect, useCallback } from 'react';
-// import * as faceapi from 'face-api.js';
+// import * as faceapi from '@vladmandic/face-api';;
 // import { motion } from 'framer-motion';
 // import { useFaceModels } from '../hooks/useFaceModels';
 // import { useCamera } from '../hooks/useCamera';
@@ -193,7 +193,7 @@
 // }
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import * as faceapi from 'face-api.js';
+import * as faceapi from '@vladmandic/face-api';;
 import { motion } from 'framer-motion';
 import { useFaceModels } from '../hooks/useFaceModels';
 import { useCamera } from '../hooks/useCamera';

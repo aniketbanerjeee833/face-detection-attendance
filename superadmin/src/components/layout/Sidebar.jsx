@@ -81,6 +81,8 @@ import {
   Users,
   ClipboardList,
   LogOut,
+  Phone,
+  Clock,
 } from "lucide-react";
 
 // const navItems = [
@@ -100,8 +102,8 @@ const navItems = [
     icon: Users,
     label: "Employees",
   },
- 
-  
+
+
   {
     to: "/logs",
     icon: ClipboardList,
@@ -246,7 +248,43 @@ export default function Sidebar({ isOpen, onClose }) {
           </NavLink>
         ))}
       </nav>
+      <div className="mx-3 mb-3 rounded-xl bg-indigo-50 px-4 py-3 ring-1 ring-indigo-100">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-400">
+          Technical Support
+        </p>
 
+        <div className="space-y-2">
+          <a
+            href="tel:9903634360"
+            className="flex items-center gap-2 text-sm font-semibold text-slate-700 transition-colors hover:text-indigo-600"
+          >
+            <Phone size={14} className="shrink-0 text-indigo-400" />
+            <span>9903634360</span>
+          </a>
+
+          <a
+            href="tel:9831166989"
+            className="flex items-center gap-2 text-sm font-semibold text-slate-700 transition-colors hover:text-indigo-600"
+          >
+            <Phone size={14} className="shrink-0 text-indigo-400" />
+            <span>9831166989</span>
+          </a>
+
+          <div className="mt-2 border-t border-indigo-100 pt-2">
+            <p className="mb-1 text-xs text-slate-600">
+              Emergency
+            </p>
+
+            <a
+              href="tel:9831166989"
+              className="flex items-center gap-2 text-sm font-semibold text-red-600 transition-colors hover:text-red-700"
+            >
+              <Phone size={14} className="shrink-0 text-red-400" />
+              <span>9831166989</span>
+            </a>
+          </div>
+        </div>
+      </div>
       {/* Logout */}
       <div className="px-3 pb-5">
         {/* <button

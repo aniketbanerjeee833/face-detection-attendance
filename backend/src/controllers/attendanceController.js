@@ -304,6 +304,7 @@ const getAttendance = asyncHandler(async (req, res) => {
 const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
   const { date, search } = req.query;
   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
+  const adminIdFilter = req.query.admin_id ? Number(req.query.admin_id) : null; // ← new
 
   try {
     const page = Number(req.query.page || 1);
@@ -313,6 +314,7 @@ const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
     let whereClause = "WHERE 1 = 1";
     const params = [];
     if (stationIdFilter) { whereClause += " AND e.police_station_id = ?"; params.push(stationIdFilter); }
+    if (adminIdFilter)   { whereClause += " AND e.admin_id = ?"; params.push(adminIdFilter); }   // ← new
     if (date) { whereClause += " AND DATE(a.marked_at) = ?"; params.push(date); }
     if (search) { whereClause += " AND e.name LIKE ?"; params.push(`%${search}%`); }
 
@@ -327,12 +329,14 @@ const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
       SELECT
         a.id, e.id AS employee_id, e.name, e.photo_url,
         ps.name AS police_station_name,
+        ad2.name AS added_by_admin_name,
         DATE_FORMAT(a.marked_at, '%d %b %Y %h:%i:%s %p') AS marked_at,
         a.status, a.confidence, ad.name AS marked_by_admin_name
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
       JOIN police_stations ps ON e.police_station_id = ps.id
       LEFT JOIN admins ad ON a.marked_by = ad.id
+      LEFT JOIN admins ad2 ON e.admin_id = ad2.id
       ${whereClause}
       ORDER BY a.marked_at DESC
       LIMIT ? OFFSET ?
@@ -345,6 +349,51 @@ const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+//OLD
+// const getAttendanceSuperAdmin = asyncHandler(async (req, res) => {
+//   const { date, search } = req.query;
+//   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
+
+//   try {
+//     const page = Number(req.query.page || 1);
+//     const limit = Number(req.query.limit || 10);
+//     const offset = (page - 1) * limit;
+
+//     let whereClause = "WHERE 1 = 1";
+//     const params = [];
+//     if (stationIdFilter) { whereClause += " AND e.police_station_id = ?"; params.push(stationIdFilter); }
+//     if (date) { whereClause += " AND DATE(a.marked_at) = ?"; params.push(date); }
+//     if (search) { whereClause += " AND e.name LIKE ?"; params.push(`%${search}%`); }
+
+//     const [countRows] = await db.query(
+//       `SELECT COUNT(*) AS total FROM attendance a JOIN employees e ON a.employee_id = e.id ${whereClause}`,
+//       params
+//     );
+//     const total = countRows[0].total;
+
+//     const [attendance] = await db.query(
+//       `
+//       SELECT
+//         a.id, e.id AS employee_id, e.name, e.photo_url,
+//         ps.name AS police_station_name,
+//         DATE_FORMAT(a.marked_at, '%d %b %Y %h:%i:%s %p') AS marked_at,
+//         a.status, a.confidence, ad.name AS marked_by_admin_name
+//       FROM attendance a
+//       JOIN employees e ON a.employee_id = e.id
+//       JOIN police_stations ps ON e.police_station_id = ps.id
+//       LEFT JOIN admins ad ON a.marked_by = ad.id
+//       ${whereClause}
+//       ORDER BY a.marked_at DESC
+//       LIMIT ? OFFSET ?
+//       `,
+//       [...params, limit, offset]
+//     );
+
+//     res.json({ attendance, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error", error: err.message });
+//   }
+// });
 
 const getSummary = asyncHandler(async (req, res) => {
   const date = req.query.date || new Date().toISOString().split("T")[0];
@@ -459,11 +508,13 @@ const getSummary = asyncHandler(async (req, res) => {
 const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
   const { date, search } = req.query;
   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
+  const adminIdFilter = req.query.admin_id ? Number(req.query.admin_id) : null; // ← new
 
   try {
     let whereClause = "WHERE 1 = 1";
     const params = [];
     if (stationIdFilter) { whereClause += " AND e.police_station_id = ?"; params.push(stationIdFilter); }
+    if (adminIdFilter)   { whereClause += " AND e.admin_id = ?"; params.push(adminIdFilter); }   // ← new
     if (date) { whereClause += " AND DATE(a.marked_at) = ?"; params.push(date); }
     if (search) { whereClause += " AND e.name LIKE ?"; params.push(`%${search}%`); }
 
@@ -471,10 +522,12 @@ const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
       `
       SELECT
         e.name, e.phone_number, ps.name AS police_station_name,
+        ad2.name AS added_by_admin_name,
         DATE_FORMAT(a.marked_at, '%d %b %Y %h:%i:%s %p') AS time
       FROM attendance a
       JOIN employees e ON a.employee_id = e.id
       JOIN police_stations ps ON e.police_station_id = ps.id
+      LEFT JOIN admins ad2 ON e.admin_id = ad2.id
       ${whereClause}
       ORDER BY e.name ASC, a.marked_at ASC
       `,
@@ -487,6 +540,7 @@ const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
       { header: 'Name', key: 'name', width: 25 },
       { header: 'Phone Number', key: 'phone_number', width: 18 },
       { header: 'Police Station', key: 'police_station_name', width: 25 },
+      { header: 'Added By Admin', key: 'added_by_admin_name', width: 22 }, // ← new
       { header: 'Time', key: 'time', width: 25 },
     ];
     sheet.getRow(1).font = { bold: true };
@@ -503,94 +557,55 @@ const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+//OLD
 // const exportAttendanceSuperAdmin = asyncHandler(async (req, res) => {
 //   const { date, search } = req.query;
-//   const adminIdFilter = req.query.admin_id ? Number(req.query.admin_id) : null;
+//   const stationIdFilter = req.query.police_station_id ? Number(req.query.police_station_id) : null;
 
 //   try {
 //     let whereClause = "WHERE 1 = 1";
 //     const params = [];
+//     if (stationIdFilter) { whereClause += " AND e.police_station_id = ?"; params.push(stationIdFilter); }
+//     if (date) { whereClause += " AND DATE(a.marked_at) = ?"; params.push(date); }
+//     if (search) { whereClause += " AND e.name LIKE ?"; params.push(`%${search}%`); }
 
-//     if (adminIdFilter) {
-//       whereClause += " AND e.admin_id = ?";
-//       params.push(adminIdFilter);
-//     }
-//     if (date) {
-//       whereClause += " AND DATE(a.in_time) = ?";
-//       params.push(date);
-//     }
-//     if (search) {
-//       whereClause += " AND e.name LIKE ?";
-//       params.push(`%${search}%`);
-//     }
-
-//     // exportAttendanceSuperAdmin — just change ORDER BY
-// const [rows] = await db.query(
-//   `
-//   SELECT
-//     e.id AS employee_id,
-//     e.name,
-//     e.phone_number,
-//     e.place_of_posting,
-//     ad.name AS admin_name,
-//     DATE_FORMAT(a.in_time,  '%d %b %Y %h:%i:%s %p') AS in_time,
-//     DATE_FORMAT(a.out_time, '%d %b %Y %h:%i:%s %p') AS out_time,
-//     a.status
-//   FROM attendance a
-//   JOIN employees e ON a.employee_id = e.id
-//   JOIN admins ad ON e.admin_id = ad.id
-//   ${whereClause}
-//   ORDER BY e.name ASC, a.in_time ASC
-//   `,
-//   params
-// );
+//     const [rows] = await db.query(
+//       `
+//       SELECT
+//         e.name, e.phone_number, ps.name AS police_station_name,
+//         DATE_FORMAT(a.marked_at, '%d %b %Y %h:%i:%s %p') AS time
+//       FROM attendance a
+//       JOIN employees e ON a.employee_id = e.id
+//       JOIN police_stations ps ON e.police_station_id = ps.id
+//       ${whereClause}
+//       ORDER BY e.name ASC, a.marked_at ASC
+//       `,
+//       params
+//     );
 
 //     const workbook = new ExcelJS.Workbook();
 //     const sheet = workbook.addWorksheet('Attendance Report');
-
 //     sheet.columns = [
 //       { header: 'Name', key: 'name', width: 25 },
 //       { header: 'Phone Number', key: 'phone_number', width: 18 },
-//       { header: 'Place of Posting', key: 'place_of_posting', width: 25 },
-//       { header: 'Admin', key: 'admin_name', width: 20 },
-//       { header: 'In Time', key: 'in_time', width: 25 },
-//       { header: 'Out Time', key: 'out_time', width: 25 },
-//       { header: 'Status', key: 'status', width: 15 },
+//       { header: 'Police Station', key: 'police_station_name', width: 25 },
+//       { header: 'Time', key: 'time', width: 25 },
 //     ];
-
 //     sheet.getRow(1).font = { bold: true };
-//     sheet.getRow(1).fill = {
-//       type: 'pattern',
-//       pattern: 'solid',
-//       fgColor: { argb: 'FFE0E7FF' },
-//     };
+//     sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
 
-//     rows.forEach((row) => {
-//       sheet.addRow({
-//         name: row.name,
-//         phone_number: row.phone_number,
-//         place_of_posting: row.place_of_posting,
-//         admin_name: row.admin_name,
-//         in_time: row.in_time,
-//         out_time: row.out_time || 'Not checked out',
-//         status: row.status === 'checked-out' ? 'Duty Over' : 'Duty In',
-//       });
-//     });
+//     rows.forEach((row) => sheet.addRow(row));
 
-//     const filename = `attendance_report_all_admins_${date || 'all'}.xlsx`;
-
-//     res.setHeader(
-//       'Content-Type',
-//       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-//     );
+//     const filename = `attendance_report_${date || 'all'}.xlsx`;
+//     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 //     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
 //     await workbook.xlsx.write(res);
 //     res.end();
 //   } catch (err) {
 //     res.status(500).json({ message: 'Server error', error: err.message });
 //   }
 // });
+
 
 
 
