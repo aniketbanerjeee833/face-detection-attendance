@@ -15,7 +15,13 @@ import ResultOverlay from '../components/face/ResultOverlay';
 
 export default function ScanAttendance() {
   const { modelsLoaded, error: modelError } = useFaceModels();
-  const { videoRef, cameraActive, error: camError, facingMode, startCamera, stopCamera, switchCamera } = useCamera('environment');
+  const {
+    videoRef, cameraActive, error: camError, facingMode,
+    startCamera, stopCamera, switchCamera,
+    torchOn, torchSupported, toggleTorch, // ← new
+  } = useCamera('environment');
+  // const { videoRef, cameraActive, error: camError, facingMode, startCamera, stopCamera,
+  //    switchCamera } = useCamera('environment');
 
   const canvasRef = useRef(null);
   const intervalRef = useRef(null);
@@ -125,23 +131,23 @@ export default function ScanAttendance() {
   }, [modelsLoaded, cameraActive, employees, drawDetections, markAttendance]);
 
   const handleReset = () => {
-  clearInterval(intervalRef.current);
-  scanningRef.current = false;
-  isProcessingRef.current = false;
-  setScanning(false);
-  setResult(null);
-  setStatusMsg('');
-  if (canvasRef.current) {
-    canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-  }
+    clearInterval(intervalRef.current);
+    scanningRef.current = false;
+    isProcessingRef.current = false;
+    setScanning(false);
+    setResult(null);
+    setStatusMsg('');
+    if (canvasRef.current) {
+      canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
 
-  // Automatically resume scanning instead of requiring a manual "Scan Now"
-  // click every time — continuous scan-again is much better UX for a kiosk
-  // where people are queued up one after another.
-  if (cameraActive && modelsLoaded) {
-    startScanning();
-  }
-};
+    // Automatically resume scanning instead of requiring a manual "Scan Now"
+    // click every time — continuous scan-again is much better UX for a kiosk
+    // where people are queued up one after another.
+    if (cameraActive && modelsLoaded) {
+      startScanning();
+    }
+  };
   // const handleReset = () => {
   //   clearInterval(intervalRef.current);
   //   scanningRef.current = false;
@@ -217,7 +223,7 @@ export default function ScanAttendance() {
                 <li><strong className="text-slate-900">4.</strong> Hold still for 2–3 seconds</li>
               </ol>
             </div>
-
+            {/* 
             <div className="space-y-2">
               {cameraActive && !scanning && (
                 <Button size="lg" full onClick={startScanning}>📷 Scan Now</Button>
@@ -230,6 +236,35 @@ export default function ScanAttendance() {
                   🔄 Switch to {facingMode === 'environment' ? 'Front' : 'Back'} Camera
                 </Button>
               )}
+              {cameraActive && (
+                <Button full variant="danger" onClick={handleStopCamera}>Stop Camera</Button>
+              )}
+            </div> */}
+            <div className="space-y-2">
+              {/* {cameraActive && !scanning && (
+                <Button size="lg" full onClick={startScanning}>📷 Scan Now</Button>
+              )} */}
+              {cameraActive && !scanning && !result && (
+                <Button size="lg" full onClick={startScanning}>
+                  📷 Scan Now
+                </Button>
+              )}
+              {scanning && (
+                <Button size="lg" full variant="outline" disabled>🔄 Scanning...</Button>
+              )}
+              {cameraActive && (
+                <Button full variant="outline" onClick={switchCamera}>
+                  🔄 Switch to {facingMode === 'environment' ? 'Front' : 'Back'} Camera
+                </Button>
+              )}
+
+              {/* Only show the torch button when the device/browser actually supports it */}
+              {cameraActive && torchSupported && (
+                <Button full variant="outline" onClick={toggleTorch}>
+                  {torchOn ? '🔦 Turn Off Flash' : '🔦 Turn On Flash'}
+                </Button>
+              )}
+
               {cameraActive && (
                 <Button full variant="danger" onClick={handleStopCamera}>Stop Camera</Button>
               )}
